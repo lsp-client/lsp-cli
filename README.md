@@ -1,5 +1,6 @@
 # LSP CLI
 
+[![PyPI](https://img.shields.io/pypi/v/lsp-cli.svg)](https://pypi.org/project/lsp-cli/)
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
