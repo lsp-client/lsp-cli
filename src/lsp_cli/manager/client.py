@@ -1,0 +1,176 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import anyio
+import asyncer
+import loguru
+import lsp_client
+import uvicorn
+import xxhash
+from attrs import Factory, define, field
+from litestar import Litestar, get, post
+from loguru import logger as global_logger
+from lsp_client import Client
+from lsp_client.jsonrpc.types import RawNotification, RawRequest, RawResponsePackage
+
+from lsp_cli.client import TargetClient
+from lsp_cli.settings import LOG_DIR, RUNTIME_DIR, settings
+
+from .models import ManagedClientInfo
+
+
+def get_client_id(target: TargetClient) -> str:
+    kind = target.client_cls.get_language_config().kind
+    path_hash = xxhash.xxh32_hexdigest(target.project_path.as_posix())
+    return f"{kind.value}-{path_hash}-default"
+
+
+@define
+class ManagedClient:
+    target: TargetClient
+    _server: uvicorn.Server = field(init=False)
+    _timeout_scope: anyio.CancelScope = field(init=False)
+    _server_scope: anyio.CancelScope = field(init=False)
+
+    _deadline: float = Factory(lambda: anyio.current_time() + settings.idle_timeout)
+    _should_exit: bool = False
+
+    _logger: loguru.Logger = field(init=False)
+    _logger_sink_id: int = field(init=False)
+
+    def __attrs_post_init__(self) -> None:
+        client_log_dir = LOG_DIR / "clients"
+        client_log_dir.mkdir(parents=True, exist_ok=True)
+
+        log_path = client_log_dir / f"{self.id}.log"
+        log_level = settings.effective_log_level
+        self._logger_sink_id = global_logger.add(
+            log_path,
+            rotation="10 MB",
+            retention="1 day",
+            level=log_level,
+            format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}:{function}:{line}</cyan> - <level>{message}</level>",
+            enqueue=True,
+        )
+        self._logger = global_logger.bind(client_id=self.id)
+        self._logger.info("Client log initialized at {}", log_path)
+
+    @property
+    def id(self) -> str:
+        return get_client_id(self.target)
+
+    @property
+    def uds_path(self) -> Path:
+        return RUNTIME_DIR / f"{self.id}.sock"
+
+    @property
+    def info(self) -> ManagedClientInfo:
+        return ManagedClientInfo(
+            project_path=self.target.project_path,
+            language=self.target.client_cls.get_language_config().kind.value,
+            remaining_time=max(0.0, self._deadline - anyio.current_time()),
+        )
+
+    def stop(self) -> None:
+        self._logger.info("Stopping managed client")
+        self._should_exit = True
+        self._server.should_exit = True
+        self._server_scope.cancel()
+        self._timeout_scope.cancel()
+
+    async def run(self) -> None:
+        self._logger.info(
+            "Starting managed client for project {} at {}",
+            self.target.project_path,
+            self.uds_path,
+        )
+
+        uds_path = anyio.Path(self.uds_path)
+        await uds_path.unlink(missing_ok=True)
+        await uds_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            lsp_client.enable_logging()
+            self._logger.debug("Client MRO: {}", self.target.client_cls.mro())
+            async with self.target.client_cls(
+                workspace=self.target.project_path
+            ) as client:
+                self._logger.info("LSP client initialized successfully")
+                await self._serve(client)
+        except Exception:
+            self._logger.exception("Error running client")
+            raise
+        finally:
+            self._logger.info("Cleaning up client")
+            await uds_path.unlink(missing_ok=True)
+            self._logger.remove(self._logger_sink_id)
+            self._timeout_scope.cancel()
+            self._server_scope.cancel()
+
+    async def _serve(self, client: Client) -> None:
+        app = self._create_app(client)
+        config = uvicorn.Config(
+            app,
+            uds=str(self.uds_path),
+            loop="asyncio",
+        )
+        self._server = uvicorn.Server(config)
+
+        async with asyncer.create_task_group() as tg:
+            with anyio.CancelScope() as scope:
+                self._server_scope = scope
+                tg.soonify(self._timeout_loop)()
+                await self._server.serve()
+
+    def _create_app(self, client: Client) -> Litestar:
+        @get("/health")
+        async def health() -> str:
+            return "ok"
+
+        @post("/shutdown")
+        async def shutdown() -> None:
+            self._logger.info("Shutdown requested")
+            self.stop()
+
+        @post("/request")
+        async def handle_request(data: RawRequest) -> RawResponsePackage:
+            self._reset_timeout()
+            self._logger.debug("Handling request: {}", data["method"])
+            response = await client.get_server().request(data)
+            self._logger.trace("Request response: {}", response)
+            return response
+
+        @post("/notify")
+        async def handle_notify(data: RawNotification) -> None:
+            self._reset_timeout()
+            self._logger.debug("Handling notification: {}", data["method"])
+            await client.get_server().notify(data)
+
+        return Litestar(
+            route_handlers=[
+                handle_request,
+                handle_notify,
+                health,
+                shutdown,
+            ],
+            debug=settings.debug,
+        )
+
+    def _reset_timeout(self) -> None:
+        self._deadline = anyio.current_time() + settings.idle_timeout
+        self._timeout_scope.cancel()
+
+    async def _timeout_loop(self) -> None:
+        while not self._should_exit:
+            if self._server.should_exit:
+                break
+            remaining = self._deadline - anyio.current_time()
+            if remaining <= 0:
+                break
+            with anyio.CancelScope() as scope:
+                self._timeout_scope = scope
+                await anyio.sleep(remaining)
+
+        self._server.should_exit = True
+        self._server_scope.cancel()
