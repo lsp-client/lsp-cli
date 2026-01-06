@@ -4,9 +4,9 @@
 [![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
-A powerful command-line interface for the **Language Server Agent Protocol (LSAP)**. `lsp-cli` provides a bridge between traditional Language Server Protocol (LSP) servers and high-level agentic workflows, offering structured data access and a robust background server management system.
+A powerful command-line interface for the [**Language Server Agent Protocol (LSAP)**](https://github.com/lsp-client/LSAP). `lsp-cli` provides a bridge between traditional [Language Server Protocol (LSP)](https://microsoft.github.io/language-server-protocol/) servers and high-level agentic workflows, offering structured data access and a robust background server management system.
 
-Built on top of [lsp-client](https://github.com/lsp-client/python-sdk) and [LSAP](https://github.com/lsp-client/LSAP), this tool is designed for developers and AI agents who need reliable, fast, and structured access to language intelligence.
+Built on top of [lsp-client](https://github.com/lsp-client/lsp-client) and [LSAP](https://github.com/lsp-client/LSAP), this tool is designed for developers and AI agents who need reliable, fast, and structured access to language intelligence.
 
 ## Key Features
 
@@ -127,7 +127,7 @@ lsp hover models.py --find "process_data<HERE>"
 
 ## Server Management
 
-`lsp-cli` uses a background manager process to keep language servers alive between command invocations. This significantly reduces latency for repeated queries.
+`lsp-cli` uses a **background manager process to keep language servers alive between command invocations**. This significantly reduces latency for repeated queries.
 
 ```bash
 # List all running LSP servers
@@ -149,16 +149,19 @@ The manager starts automatically when you run any analysis command.
 LSP CLI offers flexible ways to locate symbols in your code:
 
 1. **Line-based**: Use `--scope` with a line number (1-based)
+
    ```bash
    lsp definition main.py --scope 42
    ```
 
 2. **Range-based**: Specify a line range
+
    ```bash
    lsp symbol utils.py --scope 10,20
    ```
 
 3. **Text-based**: Use `--find` to search for text with a marker
+
    ```bash
    lsp hover app.py --find "my_function<HERE>()"
    # The <HERE> marker indicates the cursor position
