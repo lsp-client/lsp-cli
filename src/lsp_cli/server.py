@@ -11,7 +11,11 @@ app = typer.Typer(
     help="Manage background LSP server processes.",
     add_completion=False,
     rich_markup_mode=None,
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        "max_content_width": 1000,
+        "terminal_width": 1000,
+    },
 )
 console = Console()
 

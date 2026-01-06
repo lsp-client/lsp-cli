@@ -38,7 +38,11 @@ app = typer.Typer(
     help="LSP CLI: A command-line tool for interacting with Language Server Protocol (LSP) features.",
     add_completion=False,
     rich_markup_mode=None,
-    context_settings={"help_option_names": ["-h", "--help"]},
+    context_settings={
+        "help_option_names": ["-h", "--help"],
+        "max_content_width": 1000,
+        "terminal_width": 1000,
+    },
     pretty_exceptions_enable=False,
     pretty_exceptions_show_locals=False,
     pretty_exceptions_short=False,
