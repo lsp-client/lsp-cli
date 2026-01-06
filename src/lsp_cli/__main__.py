@@ -2,7 +2,6 @@ import sys
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from textwrap import dedent
 from typing import Annotated, Literal
 
 import typer
@@ -37,7 +36,8 @@ from . import options as op
 
 app = typer.Typer(
     help="LSP CLI: A command-line tool for interacting with Language Server Protocol (LSP) features.",
-    add_completion=True,
+    add_completion=False,
+    rich_markup_mode=None,
     context_settings={"help_option_names": ["-h", "--help"]},
     pretty_exceptions_enable=False,
     pretty_exceptions_show_locals=False,
@@ -121,24 +121,7 @@ def main(
     ctx.ensure_object(dict)
     ctx.obj["markdown"] = markdown
     if ctx.invoked_subcommand is None:
-        if settings.show_banner:
-            console.print(
-                dedent(
-                    r"""
-                [bold cyan]
-                 _       ____    ____       ____   _       ___
-                | |     / ___|  |  _ \     / ___| | |     |_ _|
-                | |     \___ \  | |_) |   | |     | |      | |
-                | |___   ___) | |  __/    | |___  | |___   | |
-                |_____| |____/  |_|        \____| |_____| |___|
-                [/bold cyan]
-                """
-                )
-            )
-        console.print(
-            "\n[dim]LSP CLI tool - Type [bold]--help[/bold] for more info[/dim]\n"
-        )
-        console.print(ctx.get_help())
+        print(ctx.get_help())
         raise typer.Exit()
 
 

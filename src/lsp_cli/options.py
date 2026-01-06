@@ -25,7 +25,6 @@ ScopeOpt = Annotated[
         "--scope",
         "-s",
         help="Scope: 1-based line (e.g. '1'), line range (e.g. '1,10'), or symbol path (e.g. 'a.b.c')",
-        rich_help_panel="Scope",
     ),
 ]
 
@@ -35,7 +34,6 @@ FindOpt = Annotated[
         "--find",
         "-f",
         help="Text snippet to find",
-        rich_help_panel="Search",
     ),
 ]
 
@@ -44,7 +42,6 @@ MarkerOpt = Annotated[
     typer.Option(
         "--marker",
         help="Position marker in find pattern",
-        rich_help_panel="Search",
     ),
 ]
 
@@ -54,7 +51,6 @@ MaxItemsOpt = Annotated[
         "--max-items",
         "-n",
         help="Max items to return",
-        rich_help_panel="Pagination",
     ),
 ]
 
@@ -64,7 +60,6 @@ StartIndexOpt = Annotated[
         "--start-index",
         "-i",
         help="Pagination offset",
-        rich_help_panel="Pagination",
     ),
 ]
 
@@ -74,7 +69,6 @@ PaginationIdOpt = Annotated[
         "--pagination-id",
         "-p",
         help="Pagination token",
-        rich_help_panel="Pagination",
     ),
 ]
 

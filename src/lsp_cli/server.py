@@ -9,6 +9,8 @@ from lsp_cli.manager import ManagedClientInfo, connect_manager
 app = typer.Typer(
     name="server",
     help="Manage background LSP server processes.",
+    add_completion=False,
+    rich_markup_mode=None,
     context_settings={"help_option_names": ["-h", "--help"]},
 )
 console = Console()

@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     log_level: LogLevel = "INFO"
 
     # UX improvements
-    show_banner: bool = True
     default_max_items: int | None = 20
     default_context_lines: int = 2
     ignore_paths: list[str] = [

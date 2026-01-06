@@ -10,11 +10,11 @@ Built on top of [lsp-client](https://github.com/lsp-client/python-sdk) and [LSAP
 
 ## Key Features
 
+- **🤖 Built for Agents**: The CLI output is optimized for Coding Agents. By avoiding fancy TUI/UI elements and rich terminal formatting, it significantly reduces token consumption while maintaining high readability for LLMs.
 - **🚀 Instant Analysis**: Quickly get definitions, references, hover info, and completions from the terminal.
 - **🏢 Managed Server Lifecycle**: A background manager automatically handles language server processes, reusing them across requests for maximum performance.
 - **🧩 LSAP Integration**: Leverages the Language Server Agent Protocol for structured, agent-friendly responses with built-in pagination and text-based location finding.
 - **⚡ Async-First**: Built with `anyio` and `asyncer` for high-performance concurrent operations.
-- **🎨 Rich Output**: Beautifully formatted terminal output using `rich`.
 
 ## Installation
 
@@ -218,9 +218,6 @@ idle_timeout = 600
 # Log level: TRACE, DEBUG, INFO, WARNING, ERROR, CRITICAL
 log_level = "INFO"
 
-# Show ASCII art banner on startup
-show_banner = true
-
 # Default maximum items for paginated results (search, reference, etc.)
 # Set to null for no limit, or a number like 20
 default_max_items = 20
@@ -240,7 +237,6 @@ All settings can be overridden via environment variables:
 export LSP_DEBUG=true
 export LSP_LOG_LEVEL=DEBUG
 export LSP_DEFAULT_MAX_ITEMS=50
-export LSP_SHOW_BANNER=false
 ```
 
 ## Contributing
