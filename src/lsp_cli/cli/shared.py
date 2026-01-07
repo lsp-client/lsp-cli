@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from lsp_cli.manager import CreateClientRequest, CreateClientResponse
 from lsp_cli.server import get_manager_client
 from lsp_cli.utils.http import AsyncHttpClient
+from lsp_cli.utils.socket import wait_socket
 
 
 @asynccontextmanager
@@ -23,7 +24,10 @@ async def managed_client(path: Path) -> AsyncGenerator[AsyncHttpClient]:
         )
         assert info is not None
 
-    transport = httpx.AsyncHTTPTransport(uds=info.uds_path.as_posix())
+    uds_path = info.uds_path
+    await wait_socket(uds_path, timeout=10.0)
+
+    transport = httpx.AsyncHTTPTransport(uds=uds_path.as_posix())
     async with AsyncHttpClient(
         httpx.AsyncClient(transport=transport, base_url="http://localhost")
     ) as client:

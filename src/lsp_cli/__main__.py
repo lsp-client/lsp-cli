@@ -1,3 +1,4 @@
+import logging
 import sys
 
 import typer
@@ -45,6 +46,10 @@ app.add_typer(search.app)
 
 
 def run():
+    # Suppress httpx INFO logs in CLI (unless debug mode)
+    if not settings.debug:
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+
     try:
         app()
     except (typer.Exit, typer.Abort):

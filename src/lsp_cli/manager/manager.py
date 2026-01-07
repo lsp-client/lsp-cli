@@ -56,8 +56,6 @@ class Manager:
 
         logger.debug(f"[Manager] Found client target: {target}")
 
-        logger.debug(target.client_cls.mro())
-
         client_id = get_client_id(target)
         if client_id not in self._clients:
             logger.info(f"[Manager] Creating new client: {client_id}")
@@ -75,9 +73,6 @@ class Manager:
         try:
             logger.info(f"[Manager] Running client: {client.id}")
             await client.run()
-        except Exception as e:
-            logger.exception(f"[Manager] Error running client {client.id}: {e}")
-            raise
         finally:
             logger.info(f"[Manager] Removing client: {client.id}")
             self._clients.pop(client.id, None)

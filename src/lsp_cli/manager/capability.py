@@ -1,8 +1,8 @@
-from functools import partial
+from typing import Self
 
+from attrs import frozen
 from litestar import Controller, post
-from litestar.di import Provide
-from lsap.capability.abc import Capability
+from litestar.datastructures.state import State
 from lsap.capability.definition import (
     DefinitionCapability,
     DefinitionRequest,
@@ -29,75 +29,78 @@ from lsap.capability.symbol import SymbolCapability, SymbolRequest, SymbolRespon
 from lsp_client import Client
 
 
-def init_capability(cap_cls: type[Capability], client: Client):
-    return cap_cls(client)
+@frozen
+class Capabilities:
+    definition: DefinitionCapability
+    hover: HoverCapability
+    locate: LocateCapability
+    outline: OutlineCapability
+    reference: ReferenceCapability
+    rename_preview: RenamePreviewCapability
+    rename_execute: RenameExecuteCapability
+    search: SearchCapability
+    symbol: SymbolCapability
+
+    @classmethod
+    def build(cls, client: Client) -> Self:
+        return cls(
+            definition=DefinitionCapability(client),
+            hover=HoverCapability(client),
+            locate=LocateCapability(client),
+            outline=OutlineCapability(client),
+            reference=ReferenceCapability(client),
+            rename_preview=RenamePreviewCapability(client),
+            rename_execute=RenameExecuteCapability(client),
+            search=SearchCapability(client),
+            symbol=SymbolCapability(client),
+        )
 
 
 class CapabilityController(Controller):
     path = "/capability"
 
-    dependencies = {
-        "definition": Provide(partial(DefinitionCapability)),
-        "hover": Provide(partial(HoverCapability)),
-        "locate": Provide(partial(LocateCapability)),
-        "outline": Provide(partial(OutlineCapability)),
-        "reference": Provide(partial(ReferenceCapability)),
-        "rename_preview": Provide(partial(RenamePreviewCapability)),
-        "rename_execute": Provide(partial(RenameExecuteCapability)),
-        "search": Provide(partial(SearchCapability)),
-        "symbol": Provide(partial(SymbolCapability)),
-    }
-
     @post("/definition")
     async def definition(
-        self, req: DefinitionRequest, definition: DefinitionCapability
+        self, data: DefinitionRequest, state: State
     ) -> DefinitionResponse | None:
-        return await definition(req)
+        return await state.capabilities.definition(data)
 
     @post("/hover")
-    async def hover(
-        self, req: HoverRequest, hover: HoverCapability
-    ) -> HoverResponse | None:
-        return await hover(req)
+    async def hover(self, data: HoverRequest, state: State) -> HoverResponse | None:
+        return await state.capabilities.hover(data)
 
     @post("/locate")
-    async def locate(
-        self, req: LocateRequest, locate: LocateCapability
-    ) -> LocateResponse | None:
-        return await locate(req)
+    async def locate(self, data: LocateRequest, state: State) -> LocateResponse | None:
+        return await state.capabilities.locate(data)
 
     @post("/outline")
     async def outline(
-        self, req: OutlineRequest, outline: OutlineCapability
+        self, data: OutlineRequest, state: State
     ) -> OutlineResponse | None:
-        return await outline(req)
+        return await state.capabilities.outline(data)
 
     @post("/reference")
     async def reference(
-        self, req: ReferenceRequest, reference: ReferenceCapability
+        self, data: ReferenceRequest, state: State
     ) -> ReferenceResponse | None:
-        return await reference(req)
+        return await state.capabilities.reference(data)
 
     @post("/rename/preview")
     async def rename_preview(
-        self, req: RenamePreviewRequest, rename_preview: RenamePreviewCapability
+        self, data: RenamePreviewRequest, state: State
     ) -> RenamePreviewResponse | None:
-        return await rename_preview(req)
+        return await state.capabilities.rename_preview(data)
 
     @post("/rename/execute")
     async def rename_execute(
-        self, req: RenameExecuteRequest, rename_execute: RenameExecuteCapability
+        self, data: RenameExecuteRequest, state: State
     ) -> RenameExecuteResponse | None:
-        return await rename_execute(req)
+        return await state.capabilities.rename_execute(data)
 
     @post("/search")
-    async def search(
-        self, req: SearchRequest, search: SearchCapability
-    ) -> SearchResponse | None:
-        return await search(req)
+    async def search(self, data: SearchRequest, state: State) -> SearchResponse | None:
+        return await state.capabilities.search(data)
 
     @post("/symbol")
-    async def symbol(
-        self, req: SymbolRequest, symbol: SymbolCapability
-    ) -> SymbolResponse | None:
-        return await symbol(req)
+    async def symbol(self, data: SymbolRequest, state: State) -> SymbolResponse | None:
+        return await state.capabilities.symbol(data)

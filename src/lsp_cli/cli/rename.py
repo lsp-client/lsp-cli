@@ -17,15 +17,16 @@ from .shared import create_locate, managed_client, print_resp
 app = typer.Typer(name="rename", help="Rename a symbol at a specific location.")
 
 
-@app.command(
-    "preview",
-    help="Preview the effects of renaming a symbol at a specific location.",
-)
+@app.command("preview")
 @cli_syncify
 async def rename_preview(
     new_name: Annotated[str, typer.Argument(help="The new name for the symbol.")],
     locate: op.LocateOpt,
 ):
+    """
+    Preview the effects of renaming a symbol at a specific location.
+    """
+
     locate_obj = create_locate(locate)
 
     async with managed_client(locate_obj.file_path) as client:
@@ -41,10 +42,7 @@ async def rename_preview(
             print("Warning: No rename possibilities found at the location")
 
 
-@app.command(
-    "execute",
-    help="Execute a rename operation using the ID from a previous preview.",
-)
+@app.command("execute")
 @cli_syncify
 async def rename_execute(
     rename_id: Annotated[
@@ -59,6 +57,9 @@ async def rename_execute(
     ] = None,
     workspace: op.WorkspaceOpt = None,
 ):
+    """
+    Execute a rename operation using the ID from a previous preview.
+    """
     if workspace is None:
         workspace = Path.cwd()
 

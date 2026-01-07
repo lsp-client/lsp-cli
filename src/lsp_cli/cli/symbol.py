@@ -22,7 +22,9 @@ async def get_symbol(
 
     async with managed_client(locate_obj.file_path) as client:
         resp_obj = await client.post(
-            "/capability/symbol", SymbolResponse, json=SymbolRequest(locate=locate_obj)
+            "/capability/symbol",
+            SymbolResponse,
+            json=SymbolRequest(locate=locate_obj),
         )
 
     if resp_obj:

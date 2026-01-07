@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncGenerator
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import anyio
@@ -10,12 +11,10 @@ import uvicorn
 import xxhash
 from attrs import define, field
 from litestar import Litestar
-from litestar.di import Provide
 from loguru import logger as global_logger
-from lsp_client.client import Client
 
 from lsp_cli.client import TargetClient
-from lsp_cli.manager.capability import CapabilityController
+from lsp_cli.manager.capability import CapabilityController, Capabilities
 from lsp_cli.settings import LOG_DIR, RUNTIME_DIR, settings
 
 from .models import ManagedClientInfo
@@ -102,19 +101,38 @@ class ManagedClient:
         self._server_scope.cancel()
 
     async def _serve(self) -> None:
-        async def provide_client() -> AsyncGenerator[Client]:
+        from litestar import Request, Response
+        from litestar.exceptions import HTTPException
+
+        @asynccontextmanager
+        async def lifespan(app: Litestar) -> AsyncGenerator[None]:
             async with self.target.client_cls(
                 workspace=self.target.project_path
             ) as client:
-                yield client
+                app.state.client = client
+                app.state.capabilities = Capabilities.build(client)
+                yield
+
+        def exception_handler(request: Request, exc: Exception) -> Response:
+            self._logger.exception("Unhandled exception in Litestar: {}", exc)
+            return Response(
+                content={"detail": str(exc)},
+                status_code=500,
+            )
 
         app = Litestar(
             route_handlers=[CapabilityController],
-            dependencies={"client": Provide(provide_client)},
+            lifespan=[lifespan],
             debug=settings.debug,
+            exception_handlers={Exception: exception_handler},
         )
 
-        config = uvicorn.Config(app, uds=str(self.uds_path), loop="asyncio")
+        config = uvicorn.Config(
+            app,
+            uds=str(self.uds_path),
+            loop="asyncio",
+            log_config=None,  # Disable default uvicorn logging
+        )
         self._server = uvicorn.Server(config)
 
         async with asyncer.create_task_group() as tg:
