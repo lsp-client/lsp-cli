@@ -10,14 +10,22 @@ from lsap.definition import DefinitionCapability, DefinitionClient
 from lsap.hover import HoverCapability, HoverClient
 from lsap.outline import OutlineCapability, OutlineClient
 from lsap.reference import ReferenceCapability, ReferenceClient
+from lsap.rename import RenameCapability, RenameClient
 from lsap.search import SearchCapability, SearchClient
 from lsap.symbol import SymbolCapability, SymbolClient
+from lsap.utils.locate import parse_locate_string
 from lsap_schema.definition import DefinitionRequest
 from lsap_schema.hover import HoverRequest
-from lsap_schema.locate import LineScope, Locate, SymbolScope
+from lsap_schema.locate import Locate
 from lsap_schema.models import SymbolKind
 from lsap_schema.outline import OutlineRequest
 from lsap_schema.reference import ReferenceRequest
+from lsap_schema.rename import (
+    RenameExecuteRequest,
+    RenamePreviewRequest,
+    RenamePreviewResponse,
+    RenameRequest,
+)
 from lsap_schema.search import SearchRequest
 from lsap_schema.symbol import SymbolRequest
 from lsp_client import Client
@@ -44,8 +52,6 @@ app = typer.Typer(
         "terminal_width": 1000,
     },
     pretty_exceptions_enable=False,
-    pretty_exceptions_show_locals=False,
-    pretty_exceptions_short=False,
 )
 app.add_typer(server_app, name="server")
 
@@ -56,8 +62,7 @@ console = Console()
 async def init_client(path: Path) -> AsyncGenerator[Client]:
     path = path.absolute()
     if not (target := find_client(path)):
-        console.print(f"[red]Error:[/red] No LSP client for {path}")
-        raise typer.Exit(1)
+        raise RuntimeError(f"No LSP client for {path}")
 
     with get_manager_client() as httpx:
         req = CreateClientRequest(path=path).model_dump(mode="json")
@@ -72,30 +77,8 @@ async def init_client(path: Path) -> AsyncGenerator[Client]:
         yield client
 
 
-def create_locate(
-    file_path: Path,
-    scope: str | None = None,
-    find: str | None = None,
-    marker: str = "<HERE>",
-) -> Locate:
-    parsed_scope = None
-    if scope:
-        if "," in scope:
-            try:
-                start, end = map(int, scope.split(","))
-                parsed_scope = LineScope(line=(start, end))
-            except ValueError:
-                parsed_scope = SymbolScope(symbol_path=scope.split("."))
-        elif scope.isdigit():
-            parsed_scope = LineScope(line=int(scope))
-        else:
-            parsed_scope = SymbolScope(symbol_path=scope.split("."))
-
-    try:
-        return Locate(file_path=file_path, scope=parsed_scope, find=find, marker=marker)
-    except ValueError as e:
-        console.print(f"[red]Error:[/red] {e}")
-        raise typer.Exit(1)
+def create_locate(locate_str: str) -> Locate:
+    return parse_locate_string(locate_str)
 
 
 def print_resp(resp, ctx: typer.Context):
@@ -130,6 +113,43 @@ def main(
 
 
 @app.command(
+    "locate",
+    help="""
+Locate a position or range in the codebase using a string syntax.
+
+Syntax: `<file_path>[:<scope>][@<find>]`
+
+Scope formats:
+
+- `<line>` - Single line number (e.g., `42`)
+
+- `<start>,<end>` - Line range with comma (e.g., `10,20`)
+
+- `<start>-<end>` - Line range with dash (e.g., `10-20`)
+
+- `<symbol_path>` - Symbol path with dots (e.g., `MyClass.my_method`)
+
+Examples:
+
+- `foo.py@self.<|>`
+
+- `foo.py:42@return <|>result`
+
+- `foo.py:10,20@if <|>condition`
+
+- `foo.py:MyClass.my_method@self.<|>`
+
+- `foo.py:MyClass`
+""",
+)
+def locate_command(
+    locate: Annotated[str, typer.Argument(help="The locate string to parse.")],
+):
+    locate_obj = create_locate(locate)
+    console.print(locate_obj)
+
+
+@app.command(
     "definition",
     help="Find the definition (default), declaration (--decl), or type definition (--type) of a symbol. (alias: def)",
 )
@@ -137,10 +157,7 @@ def main(
 @cli_syncify
 async def get_definition(
     ctx: typer.Context,
-    file_path: op.FileArg,
-    scope: op.ScopeOpt = None,
-    find: op.FindOpt = None,
-    marker: op.MarkerOpt = "<HERE>",
+    locate: op.LocateOpt,
     mode: Annotated[
         Literal["definition", "declaration", "type_definition"],
         typer.Option(
@@ -154,31 +171,29 @@ async def get_definition(
     type_def: bool = typer.Option(False, "--type", help="Search for type definition."),
 ):
     if decl and type_def:
-        console.print("[red]Error:[/red] --decl and --type are mutually exclusive")
-        raise typer.Exit(1)
+        raise ValueError("--decl and --type are mutually exclusive")
 
     if decl:
         mode = "declaration"
     elif type_def:
         mode = "type_definition"
 
-    locate = create_locate(file_path, scope, find, marker)
+    locate_obj = create_locate(locate)
 
-    async with init_client(file_path) as client:
+    async with init_client(locate_obj.file_path) as client:
         if not isinstance(client, DefinitionClient):
-            console.print("[red]Error:[/red] Client does not support definitions")
-            raise typer.Exit(1)
+            raise RuntimeError("Client does not support definitions")
 
         cap = DefinitionCapability(client)
         req = DefinitionRequest(
-            locate=locate,
+            locate=locate_obj,
             mode=mode,
         )
 
         if resp := await cap(req):
             print_resp(resp, ctx)
         else:
-            console.print(f"[yellow]No {mode.replace('_', ' ')} found[/yellow]")
+            console.print(f"Warning: No {mode.replace('_', ' ')} found")
 
 
 @app.command(
@@ -188,25 +203,21 @@ async def get_definition(
 @cli_syncify
 async def get_hover(
     ctx: typer.Context,
-    file_path: op.FileArg,
-    scope: op.ScopeOpt = None,
-    find: op.FindOpt = None,
-    marker: op.MarkerOpt = "<HERE>",
+    locate: op.LocateOpt,
 ):
-    locate = create_locate(file_path, scope, find, marker)
+    locate_obj = create_locate(locate)
 
-    async with init_client(file_path) as client:
+    async with init_client(locate_obj.file_path) as client:
         if not isinstance(client, HoverClient):
-            console.print("[red]Error:[/red] Client does not support hover")
-            raise typer.Exit(1)
+            raise RuntimeError("Client does not support hover")
 
         cap = HoverCapability(client)
-        req = HoverRequest(locate=locate)
+        req = HoverRequest(locate=locate_obj)
 
         if resp := await cap(req):
             print_resp(resp, ctx)
         else:
-            console.print("[yellow]No hover information found[/yellow]")
+            console.print("Warning: No hover information found")
 
 
 @app.command(
@@ -217,10 +228,7 @@ async def get_hover(
 @cli_syncify
 async def get_reference(
     ctx: typer.Context,
-    file_path: op.FileArg,
-    scope: op.ScopeOpt = None,
-    find: op.FindOpt = None,
-    marker: op.MarkerOpt = "<HERE>",
+    locate: op.LocateOpt,
     mode: Annotated[
         Literal["references", "implementations"],
         typer.Option(
@@ -245,20 +253,18 @@ async def get_reference(
     pagination_id: op.PaginationIdOpt = None,
 ):
     if impl and references:
-        console.print("[red]Error:[/red] --impl and --ref are mutually exclusive")
-        raise typer.Exit(1)
+        raise ValueError("--impl and --ref are mutually exclusive")
 
     if impl:
         mode = "implementations"
     elif references:
         mode = "references"
 
-    locate = create_locate(file_path, scope, find, marker)
+    locate_obj = create_locate(locate)
 
-    async with init_client(file_path) as client:
+    async with init_client(locate_obj.file_path) as client:
         if not isinstance(client, ReferenceClient):
-            console.print("[red]Error:[/red] Client does not support references")
-            raise typer.Exit(1)
+            raise RuntimeError("Client does not support references")
 
         cap = ReferenceCapability(client)
 
@@ -269,7 +275,7 @@ async def get_reference(
         )
 
         req = ReferenceRequest(
-            locate=locate,
+            locate=locate_obj,
             mode=mode,
             context_lines=effective_context_lines,
             max_items=max_items,
@@ -280,7 +286,7 @@ async def get_reference(
         if resp := await cap(req):
             print_resp(resp, ctx)
         else:
-            console.print(f"[yellow]No {mode} found[/yellow]")
+            console.print(f"Warning: No {mode} found")
 
 
 @app.command(
@@ -290,7 +296,10 @@ async def get_reference(
 @cli_syncify
 async def get_outline(
     ctx: typer.Context,
-    file_path: op.FileArg,
+    file_path: Annotated[
+        Path,
+        typer.Argument(help="Path to the file to get the symbol outline for."),
+    ],
     all_symbols: Annotated[
         bool,
         typer.Option(
@@ -302,8 +311,7 @@ async def get_outline(
 ):
     async with init_client(file_path) as client:
         if not isinstance(client, OutlineClient):
-            console.print("[red]Error:[/red] Client does not support symbol outline")
-            raise typer.Exit(1)
+            raise RuntimeError("Client does not support symbol outline")
 
         cap = OutlineCapability(client)
         req = OutlineRequest(file_path=file_path)
@@ -329,14 +337,14 @@ async def get_outline(
                     resp.items = filtered_items
                     if not filtered_items:
                         console.print(
-                            "[yellow]No symbols found (use --all to show local variables)[/yellow]"
+                            "Warning: No symbols found (use --all to show local variables)"
                         )
                         return
                 print_resp(resp, ctx)
             else:
-                console.print("[yellow]No symbols found[/yellow]")
+                console.print("Warning: No symbols found")
         else:
-            console.print("[yellow]No symbols found[/yellow]")
+            console.print("Warning: No symbols found")
 
 
 @app.command(
@@ -347,27 +355,23 @@ async def get_outline(
 @cli_syncify
 async def get_symbol(
     ctx: typer.Context,
-    file_path: op.FileArg,
-    scope: op.ScopeOpt = None,
-    find: op.FindOpt = None,
-    marker: op.MarkerOpt = "<HERE>",
+    locate: op.LocateOpt,
 ):
-    locate = create_locate(file_path, scope, find, marker)
+    locate_obj = create_locate(locate)
 
-    async with init_client(file_path) as client:
+    async with init_client(locate_obj.file_path) as client:
         if not isinstance(client, SymbolClient):
-            console.print("[red]Error:[/red] Client does not support symbol info")
-            raise typer.Exit(1)
+            raise RuntimeError("Client does not support symbol info")
 
         cap = SymbolCapability(client)
         req = SymbolRequest(
-            locate=locate,
+            locate=locate_obj,
         )
 
         if resp := await cap(req):
             print_resp(resp, ctx)
         else:
-            console.print("[yellow]No symbol information found[/yellow]")
+            console.print("Warning: No symbol information found")
 
 
 @app.command(
@@ -399,8 +403,7 @@ async def search(
 
     async with init_client(workspace) as client:
         if not isinstance(client, SearchClient):
-            console.print("[red]Error:[/red] Client does not support search")
-            raise typer.Exit(1)
+            raise RuntimeError("Client does not support search")
 
         cap = SearchCapability(client)
 
@@ -421,12 +424,76 @@ async def search(
                 print_resp(resp, ctx)
                 if effective_max_items and len(resp.items) >= effective_max_items:
                     console.print(
-                        f"\n[dim]Showing {effective_max_items} results. Use --max-items to see more.[/dim]"
+                        f"\nInfo: Showing {effective_max_items} results. Use --max-items to see more."
                     )
             else:
-                console.print("[yellow]No matches found[/yellow]")
+                console.print("Warning: No matches found")
         else:
-            console.print("[yellow]No matches found[/yellow]")
+            console.print("Warning: No matches found")
+
+
+@app.command(
+    "rename",
+    help="Rename a symbol at a specific location.",
+)
+@cli_syncify
+async def rename(
+    ctx: typer.Context,
+    new_name: Annotated[str, typer.Argument(help="The new name for the symbol.")],
+    locate: op.LocateOpt,
+    execute: Annotated[
+        str | None,
+        typer.Option(
+            "--execute",
+            "-e",
+            help="Execute the rename operation. Can optionally take a rename ID from a previous preview. If the flag is present but no ID is provided, it will automatically perform a preview first.",
+        ),
+    ] = None,
+):
+    locate_obj = create_locate(locate)
+
+    async with init_client(locate_obj.file_path) as client:
+        if not isinstance(client, RenameClient):
+            raise RuntimeError("Client does not support rename")
+
+        cap = RenameCapability(client)
+
+        rename_id = execute
+        if not rename_id:
+            # Always do a preview first if no ID is provided to get the rename_id and see what will change
+            preview_req = RenamePreviewRequest(locate=locate_obj, new_name=new_name)
+            if resp := await cap(RenameRequest(root=preview_req)):
+                preview_resp = resp.root
+                if not isinstance(preview_resp, RenamePreviewResponse):
+                    raise RuntimeError("Unexpected response from rename preview")
+
+                if execute is None:
+                    print_resp(preview_resp, ctx)
+                    return
+
+                rename_id = preview_resp.rename_id
+            else:
+                console.print("Warning: No rename possibilities found at the location")
+                return
+
+        # If execute is requested (either via flag or ID), apply it
+        execute_req = RenameExecuteRequest(
+            locate=locate_obj,
+            new_name=new_name,
+            rename_id=rename_id,
+        )
+        if exec_resp := await cap(RenameRequest(root=execute_req)):
+            print_resp(exec_resp.root, ctx)
+        else:
+            raise RuntimeError("Failed to execute rename")
+
+
+def get_msg(err: Exception | ExceptionGroup) -> str:
+    match err:
+        case ExceptionGroup():
+            return "\n".join(get_msg(se) for se in err.exceptions)
+        case _:
+            return str(err)
 
 
 def run():
@@ -434,17 +501,8 @@ def run():
         app()
     except Exception as e:
         if settings.debug:
-            raise
-
-        def get_msg(err: Exception) -> str:
-            if isinstance(err, ExceptionGroup):
-                return "\n".join(get_msg(se) for se in err.exceptions)
-            msg = str(err)
-            if not msg:
-                msg = f"{type(err).__name__}: An error occurred"
-            return msg
-
-        console.print(f"[red]Error:[/red] {get_msg(e)}")
+            raise e
+        console.print(f"Error: {get_msg(e)}")
         sys.exit(1)
 
 
