@@ -4,8 +4,10 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Annotated, Literal
 
+import httpx
 import typer
 from loguru import logger
+from pydantic import ValidationError
 from lsap.definition import DefinitionCapability, DefinitionClient
 from lsap.hover import HoverCapability, HoverClient
 from lsap.locate import LocateCapability
@@ -75,7 +77,10 @@ async def init_client(path: Path) -> AsyncGenerator[Client]:
 
 
 def create_locate(locate_str: str) -> Locate:
-    return parse_locate_string(locate_str)
+    try:
+        return parse_locate_string(locate_str)
+    except Exception as e:
+        raise ValueError(f"Invalid locate syntax '{locate_str}': {e}") from e
 
 
 def print_code_context(file_path: Path, line: int, context: int = 3):
@@ -159,25 +164,17 @@ async def locate_command(
     ),
 ):
     locate_obj = create_locate(locate)
-    resp = None
-    error_msg = None
 
-    try:
-        async with init_client(locate_obj.file_path) as client:
-            cap = LocateCapability(client)  # type: ignore
-            req = LocateRequest(locate=locate_obj)
-            resp = await cap(req)
-            if not resp and check:
-                error_msg = f"Target '{locate}' not found"
-    except Exception as e:
-        if check:
-            error_msg = get_msg(e)
+    async with init_client(locate_obj.file_path) as client:
+        cap = LocateCapability(client)  # type: ignore
+        req = LocateRequest(locate=locate_obj)
+        resp = await cap(req)
 
     if resp:
         print_resp(resp)
         print_code_context(resp.file_path, resp.position.line)
-    elif error_msg:
-        raise RuntimeError(error_msg)
+    elif check:
+        raise RuntimeError(f"Target '{locate}' not found")
     else:
         print(locate_obj)
 
@@ -524,6 +521,16 @@ def get_msg(err: Exception | ExceptionGroup) -> str:
     match err:
         case ExceptionGroup():
             return "\n".join(get_msg(se) for se in err.exceptions)
+        case ValidationError():
+            return "\n".join(str(e["msg"]) for e in err.errors())
+        case httpx.HTTPStatusError():
+            try:
+                data = err.response.json()
+                if isinstance(data, dict) and "detail" in data:
+                    return str(data["detail"])
+            except Exception:
+                pass
+            return str(err)
         case _:
             return str(err)
 
@@ -531,10 +538,12 @@ def get_msg(err: Exception | ExceptionGroup) -> str:
 def run():
     try:
         app()
+    except (typer.Exit, typer.Abort):
+        pass
     except Exception as e:
         if settings.debug:
             raise e
-        print(f"Error: {get_msg(e)}")
+        print(f"Error: {get_msg(e)}", file=sys.stderr)
         sys.exit(1)
 
 

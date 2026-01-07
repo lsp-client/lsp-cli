@@ -33,14 +33,12 @@ def list_servers():
     """List all currently running and managed LSP servers."""
     with get_manager_client() as client:
         response = client.get("/list")
-        if response.status_code == 200:
-            servers = [ManagedClientInfo.model_validate(s) for s in response.json()]
-            if not servers:
-                print("No servers running.")
-                return
-            print(ManagedClientInfo.format(servers))
-        else:
-            print(f"Error: Listing servers: {response.text}")
+        response.raise_for_status()
+        servers = [ManagedClientInfo.model_validate(s) for s in response.json()]
+        if not servers:
+            print("No servers running.")
+            return
+        print(ManagedClientInfo.format(servers))
 
 
 @app.command("start")
@@ -53,13 +51,11 @@ def start_server(
     """Start a background LSP server for the project containing the specified path."""
     with get_manager_client() as client:
         response = client.post("/create", json={"path": str(path.absolute())})
-        if response.status_code == 201:
-            data = response.json()
-            info = ManagedClientInfo.model_validate(data["info"])
-            print(f"Success: Started server for {path.absolute()}")
-            print(ManagedClientInfo.format(info))
-        else:
-            print(f"Error: Starting server: {response.text}")
+        response.raise_for_status()
+        data = response.json()
+        info = ManagedClientInfo.model_validate(data["info"])
+        print(f"Success: Started server for {path.absolute()}")
+        print(ManagedClientInfo.format(info))
 
 
 @app.command("stop")
@@ -74,10 +70,8 @@ def stop_server(
         response = client.request(
             "DELETE", "/delete", json={"path": str(path.absolute())}
         )
-        if response.status_code == 204 or response.status_code == 200:
-            print(f"Success: Stopped server for {path.absolute()}")
-        else:
-            print(f"Error: Stopping server: {response.text}")
+        response.raise_for_status()
+        print(f"Success: Stopped server for {path.absolute()}")
 
 
 if __name__ == "__main__":
