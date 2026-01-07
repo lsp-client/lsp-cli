@@ -7,7 +7,6 @@ from typing import Annotated, Literal
 import httpx
 import typer
 from loguru import logger
-from pydantic import ValidationError
 from lsap.definition import DefinitionCapability, DefinitionClient
 from lsap.hover import HoverCapability, HoverClient
 from lsap.locate import LocateCapability
@@ -32,6 +31,7 @@ from lsap_schema.rename import (
 from lsap_schema.search import SearchRequest
 from lsap_schema.symbol import SymbolRequest
 from lsp_client import Client
+from pydantic import ValidationError
 
 from lsp_cli.client import find_client
 from lsp_cli.manager import CreateClientRequest, CreateClientResponse

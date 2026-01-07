@@ -8,7 +8,7 @@ import loguru
 import lsp_client
 import uvicorn
 import xxhash
-from attrs import Factory, define, field
+from attrs import define, field
 from litestar import Litestar, get, post
 from loguru import logger as global_logger
 from lsp_client import Client
@@ -29,17 +29,20 @@ def get_client_id(target: TargetClient) -> str:
 @define
 class ManagedClient:
     target: TargetClient
+
     _server: uvicorn.Server = field(init=False)
     _timeout_scope: anyio.CancelScope = field(init=False)
     _server_scope: anyio.CancelScope = field(init=False)
 
-    _deadline: float = Factory(lambda: anyio.current_time() + settings.idle_timeout)
+    _deadline: float = field(init=False)
     _should_exit: bool = False
 
     _logger: loguru.Logger = field(init=False)
     _logger_sink_id: int = field(init=False)
 
     def __attrs_post_init__(self) -> None:
+        self._deadline = anyio.current_time() + settings.idle_timeout
+
         client_log_dir = LOG_DIR / "clients"
         client_log_dir.mkdir(parents=True, exist_ok=True)
 
@@ -79,49 +82,23 @@ class ManagedClient:
         self._server_scope.cancel()
         self._timeout_scope.cancel()
 
-    async def run(self) -> None:
-        self._logger.info(
-            "Starting managed client for project {} at {}",
-            self.target.project_path,
-            self.uds_path,
-        )
+    def _reset_timeout(self) -> None:
+        self._deadline = anyio.current_time() + settings.idle_timeout
+        self._timeout_scope.cancel()
 
-        uds_path = anyio.Path(self.uds_path)
-        await uds_path.unlink(missing_ok=True)
-        await uds_path.parent.mkdir(parents=True, exist_ok=True)
-
-        try:
-            lsp_client.enable_logging()
-            self._logger.debug("Client MRO: {}", self.target.client_cls.mro())
-            async with self.target.client_cls(
-                workspace=self.target.project_path
-            ) as client:
-                self._logger.info("LSP client initialized successfully")
-                await self._serve(client)
-        except Exception:
-            self._logger.exception("Error running client")
-            raise
-        finally:
-            self._logger.info("Cleaning up client")
-            await uds_path.unlink(missing_ok=True)
-            self._logger.remove(self._logger_sink_id)
-            self._timeout_scope.cancel()
-            self._server_scope.cancel()
-
-    async def _serve(self, client: Client) -> None:
-        app = self._create_app(client)
-        config = uvicorn.Config(
-            app,
-            uds=str(self.uds_path),
-            loop="asyncio",
-        )
-        self._server = uvicorn.Server(config)
-
-        async with asyncer.create_task_group() as tg:
+    async def _timeout_loop(self) -> None:
+        while not self._should_exit:
+            if self._server.should_exit:
+                break
+            remaining = self._deadline - anyio.current_time()
+            if remaining <= 0:
+                break
             with anyio.CancelScope() as scope:
-                self._server_scope = scope
-                tg.soonify(self._timeout_loop)()
-                await self._server.serve()
+                self._timeout_scope = scope
+                await anyio.sleep(remaining)
+
+        self._server.should_exit = True
+        self._server_scope.cancel()
 
     def _create_app(self, client: Client) -> Litestar:
         @get("/health")
@@ -157,20 +134,43 @@ class ManagedClient:
             debug=settings.debug,
         )
 
-    def _reset_timeout(self) -> None:
-        self._deadline = anyio.current_time() + settings.idle_timeout
-        self._timeout_scope.cancel()
+    async def _serve(self, client: Client) -> None:
+        app = self._create_app(client)
+        config = uvicorn.Config(
+            app,
+            uds=str(self.uds_path),
+            loop="asyncio",
+        )
+        self._server = uvicorn.Server(config)
 
-    async def _timeout_loop(self) -> None:
-        while not self._should_exit:
-            if self._server.should_exit:
-                break
-            remaining = self._deadline - anyio.current_time()
-            if remaining <= 0:
-                break
+        async with asyncer.create_task_group() as tg:
             with anyio.CancelScope() as scope:
-                self._timeout_scope = scope
-                await anyio.sleep(remaining)
+                self._server_scope = scope
+                tg.soonify(self._timeout_loop)()
+                await self._server.serve()
 
-        self._server.should_exit = True
-        self._server_scope.cancel()
+    async def run(self) -> None:
+        self._logger.info(
+            "Starting managed client for project {} at {}",
+            self.target.project_path,
+            self.uds_path,
+        )
+
+        uds_path = anyio.Path(self.uds_path)
+        await uds_path.unlink(missing_ok=True)
+        await uds_path.parent.mkdir(parents=True, exist_ok=True)
+
+        try:
+            lsp_client.enable_logging()
+            self._logger.debug("Client MRO: {}", self.target.client_cls.mro())
+            async with self.target.client_cls(
+                workspace=self.target.project_path
+            ) as client:
+                self._logger.info("LSP client initialized successfully")
+                await self._serve(client)
+        finally:
+            self._logger.info("Cleaning up client")
+            await uds_path.unlink(missing_ok=True)
+            self._logger.remove(self._logger_sink_id)
+            self._timeout_scope.cancel()
+            self._server_scope.cancel()

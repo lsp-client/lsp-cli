@@ -222,23 +222,13 @@ wheels = [
 [[package]]
 name = "lsap"
 version = "0.1.0"
-source = { git = "https://github.com/lsp-client/LSAP.git?subdirectory=python#8ac8c5384e793659c84286faecf8965eadc4c4a5" }
+source = { git = "https://github.com/lsp-client/LSAP.git#d899764b1926f880cb3c30b4bbb448e14abf5a81" }
 dependencies = [
     { name = "anyio" },
     { name = "asyncer" },
     { name = "attrs" },
     { name = "cattrs" },
-    { name = "lsap-schema" },
     { name = "lsp-client" },
-    { name = "pydantic" },
-    { name = "python-liquid" },
-]
-
-[[package]]
-name = "lsap-schema"
-version = "0.1.0"
-source = { git = "https://github.com/lsp-client/LSAP.git#8ac8c5384e793659c84286faecf8965eadc4c4a5" }
-dependencies = [
     { name = "lsprotocol" },
     { name = "pydantic" },
     { name = "python-liquid" },
@@ -283,7 +273,7 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "litestar", specifier = ">=2.19.0" },
     { name = "loguru", specifier = ">=0.7.3" },
-    { name = "lsap", git = "https://github.com/lsp-client/LSAP.git?subdirectory=python" },
+    { name = "lsap", git = "https://github.com/lsp-client/LSAP.git" },
     { name = "lsp-client" },
     { name = "platformdirs", specifier = ">=4.5.1" },
     { name = "pydantic", specifier = ">=2.12.5" },
@@ -306,7 +296,7 @@ dev = [
 [[package]]
 name = "lsp-client"
 version = "0.2.4"
-source = { git = "https://github.com/lsp-client/python-sdk.git?branch=release%2Fv0.3#a231eca91d0912a50dcf6613f1160f4d8a2f3d2b" }
+source = { git = "https://github.com/lsp-client/lsp-client.git?branch=release%2Fv0.3#a231eca91d0912a50dcf6613f1160f4d8a2f3d2b" }
 dependencies = [
     { name = "aioshutil" },
     { name = "anyio" },

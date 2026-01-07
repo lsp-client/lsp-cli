@@ -2,7 +2,7 @@ import uvicorn
 
 from lsp_cli.settings import MANAGER_UDS_PATH
 
-from .cli import app
+from .manager import app
 
 if __name__ == "__main__":
     MANAGER_UDS_PATH.unlink(missing_ok=True)
