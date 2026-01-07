@@ -31,7 +31,10 @@ class HttpClient:
         resp.raise_for_status()
         if resp.status_code == 204 or not resp.content:
             return None
-        return resp_schema.model_validate(resp.json())
+        json_data = resp.json()
+        if json_data is None:
+            return None
+        return resp_schema.model_validate(json_data)
 
     def get[T: BaseModel](
         self,
@@ -116,7 +119,10 @@ class AsyncHttpClient:
         resp.raise_for_status()
         if resp.status_code == 204 or not resp.content:
             return None
-        return resp_schema.model_validate(resp.json())
+        json_data = resp.json()
+        if json_data is None:
+            return None
+        return resp_schema.model_validate(json_data)
 
     async def get[T: BaseModel](
         self,

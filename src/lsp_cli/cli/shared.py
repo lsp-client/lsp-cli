@@ -16,6 +16,9 @@ from lsp_cli.utils.socket import wait_socket
 @asynccontextmanager
 async def managed_client(path: Path) -> AsyncGenerator[AsyncHttpClient]:
     path = path.absolute()
+    if not path.exists():
+        raise FileNotFoundError(f"File not found: {path}")
+
     with get_manager_client() as client:
         info = client.post(
             "/create",
@@ -49,12 +52,9 @@ def get_msg(err: Exception | ExceptionGroup) -> str:
         case ValidationError():
             return "\n".join(str(e["msg"]) for e in err.errors())
         case httpx.HTTPStatusError():
-            try:
-                data = err.response.json()
-                if isinstance(data, dict) and "detail" in data:
-                    return str(data["detail"])
-            except Exception:
-                pass
+            data = err.response.json()
+            if isinstance(data, dict) and "detail" in data:
+                return str(data["detail"])
             return str(err)
         case _:
             return str(err)
