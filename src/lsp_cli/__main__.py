@@ -29,8 +29,6 @@ from lsap_schema.rename import (
 from lsap_schema.search import SearchRequest
 from lsap_schema.symbol import SymbolRequest
 from lsp_client import Client
-from rich.console import Console
-from rich.markdown import Markdown
 
 from lsp_cli.client import find_client
 from lsp_cli.manager import CreateClientRequest, CreateClientResponse
@@ -45,7 +43,6 @@ from . import options as op
 app = typer.Typer(
     help="LSP CLI: A command-line tool for interacting with Language Server Protocol (LSP) features.",
     add_completion=False,
-    rich_markup_mode=None,
     context_settings={
         "help_option_names": ["-h", "--help"],
         "max_content_width": 1000,
@@ -54,8 +51,6 @@ app = typer.Typer(
     pretty_exceptions_enable=False,
 )
 app.add_typer(server_app, name="server")
-
-console = Console()
 
 
 @asynccontextmanager
@@ -81,11 +76,8 @@ def create_locate(locate_str: str) -> Locate:
     return parse_locate_string(locate_str)
 
 
-def print_resp(resp, ctx: typer.Context):
-    if ctx.obj and ctx.obj.get("markdown"):
-        console.print(Markdown(resp.format()))
-    else:
-        console.print(resp.format())
+def print_resp(resp):
+    print(resp.format())
 
 
 @app.callback(invoke_without_command=True)
@@ -97,7 +89,6 @@ def main(
         "-d",
         help="Enable verbose debug logging for troubleshooting.",
     ),
-    markdown: op.MarkdownOpt = False,
 ):
     if debug:
         settings.debug = True
@@ -106,7 +97,6 @@ def main(
     logger.add(sys.stderr, level=settings.effective_log_level)
 
     ctx.ensure_object(dict)
-    ctx.obj["markdown"] = markdown
     if ctx.invoked_subcommand is None:
         print(ctx.get_help())
         raise typer.Exit()
@@ -146,7 +136,7 @@ def locate_command(
     locate: Annotated[str, typer.Argument(help="The locate string to parse.")],
 ):
     locate_obj = create_locate(locate)
-    console.print(locate_obj)
+    print(locate_obj)
 
 
 @app.command(
@@ -156,7 +146,6 @@ def locate_command(
 @app.command("def", hidden=True)
 @cli_syncify
 async def get_definition(
-    ctx: typer.Context,
     locate: op.LocateOpt,
     mode: Annotated[
         Literal["definition", "declaration", "type_definition"],
@@ -191,9 +180,9 @@ async def get_definition(
         )
 
         if resp := await cap(req):
-            print_resp(resp, ctx)
+            print_resp(resp)
         else:
-            console.print(f"Warning: No {mode.replace('_', ' ')} found")
+            print(f"Warning: No {mode.replace('_', ' ')} found")
 
 
 @app.command(
@@ -202,7 +191,6 @@ async def get_definition(
 )
 @cli_syncify
 async def get_hover(
-    ctx: typer.Context,
     locate: op.LocateOpt,
 ):
     locate_obj = create_locate(locate)
@@ -215,9 +203,9 @@ async def get_hover(
         req = HoverRequest(locate=locate_obj)
 
         if resp := await cap(req):
-            print_resp(resp, ctx)
+            print_resp(resp)
         else:
-            console.print("Warning: No hover information found")
+            print("Warning: No hover information found")
 
 
 @app.command(
@@ -227,7 +215,6 @@ async def get_hover(
 @app.command("ref", hidden=True)
 @cli_syncify
 async def get_reference(
-    ctx: typer.Context,
     locate: op.LocateOpt,
     mode: Annotated[
         Literal["references", "implementations"],
@@ -284,9 +271,9 @@ async def get_reference(
         )
 
         if resp := await cap(req):
-            print_resp(resp, ctx)
+            print_resp(resp)
         else:
-            console.print(f"Warning: No {mode} found")
+            print(f"Warning: No {mode} found")
 
 
 @app.command(
@@ -295,7 +282,6 @@ async def get_reference(
 )
 @cli_syncify
 async def get_outline(
-    ctx: typer.Context,
     file_path: Annotated[
         Path,
         typer.Argument(help="Path to the file to get the symbol outline for."),
@@ -336,15 +322,15 @@ async def get_outline(
                     ]
                     resp.items = filtered_items
                     if not filtered_items:
-                        console.print(
+                        print(
                             "Warning: No symbols found (use --all to show local variables)"
                         )
                         return
-                print_resp(resp, ctx)
+                print_resp(resp)
             else:
-                console.print("Warning: No symbols found")
+                print("Warning: No symbols found")
         else:
-            console.print("Warning: No symbols found")
+            print("Warning: No symbols found")
 
 
 @app.command(
@@ -354,7 +340,6 @@ async def get_outline(
 @app.command("sym", hidden=True)
 @cli_syncify
 async def get_symbol(
-    ctx: typer.Context,
     locate: op.LocateOpt,
 ):
     locate_obj = create_locate(locate)
@@ -369,9 +354,9 @@ async def get_symbol(
         )
 
         if resp := await cap(req):
-            print_resp(resp, ctx)
+            print_resp(resp)
         else:
-            console.print("Warning: No symbol information found")
+            print("Warning: No symbol information found")
 
 
 @app.command(
@@ -380,7 +365,6 @@ async def get_symbol(
 )
 @cli_syncify
 async def search(
-    ctx: typer.Context,
     query: Annotated[
         str,
         typer.Argument(help="The name or partial name of the symbol to search for."),
@@ -421,15 +405,15 @@ async def search(
 
         if resp := await cap(req):
             if resp.items:
-                print_resp(resp, ctx)
+                print_resp(resp)
                 if effective_max_items and len(resp.items) >= effective_max_items:
-                    console.print(
+                    print(
                         f"\nInfo: Showing {effective_max_items} results. Use --max-items to see more."
                     )
             else:
-                console.print("Warning: No matches found")
+                print("Warning: No matches found")
         else:
-            console.print("Warning: No matches found")
+            print("Warning: No matches found")
 
 
 @app.command(
@@ -438,7 +422,6 @@ async def search(
 )
 @cli_syncify
 async def rename(
-    ctx: typer.Context,
     new_name: Annotated[str, typer.Argument(help="The new name for the symbol.")],
     locate: op.LocateOpt,
     execute: Annotated[
@@ -468,12 +451,12 @@ async def rename(
                     raise RuntimeError("Unexpected response from rename preview")
 
                 if execute is None:
-                    print_resp(preview_resp, ctx)
+                    print_resp(preview_resp)
                     return
 
                 rename_id = preview_resp.rename_id
             else:
-                console.print("Warning: No rename possibilities found at the location")
+                print("Warning: No rename possibilities found at the location")
                 return
 
         # If execute is requested (either via flag or ID), apply it
@@ -483,7 +466,7 @@ async def rename(
             rename_id=rename_id,
         )
         if exec_resp := await cap(RenameRequest(root=execute_req)):
-            print_resp(exec_resp.root, ctx)
+            print_resp(exec_resp.root)
         else:
             raise RuntimeError("Failed to execute rename")
 
@@ -502,7 +485,7 @@ def run():
     except Exception as e:
         if settings.debug:
             raise e
-        console.print(f"Error: {get_msg(e)}")
+        print(f"Error: {get_msg(e)}")
         sys.exit(1)
 
 

@@ -2,7 +2,6 @@ from pathlib import Path
 
 import httpx
 import typer
-from rich.console import Console
 
 from lsp_cli.manager import ManagedClientInfo, connect_manager
 
@@ -10,14 +9,12 @@ app = typer.Typer(
     name="server",
     help="Manage background LSP server processes.",
     add_completion=False,
-    rich_markup_mode=None,
     context_settings={
         "help_option_names": ["-h", "--help"],
         "max_content_width": 1000,
         "terminal_width": 1000,
     },
 )
-console = Console()
 
 
 @app.callback(invoke_without_command=True)
@@ -39,11 +36,11 @@ def list_servers():
         if response.status_code == 200:
             servers = [ManagedClientInfo.model_validate(s) for s in response.json()]
             if not servers:
-                console.print("No servers running.")
+                print("No servers running.")
                 return
-            console.print(ManagedClientInfo.format(servers))
+            print(ManagedClientInfo.format(servers))
         else:
-            console.print(f"Error: Listing servers: {response.text}")
+            print(f"Error: Listing servers: {response.text}")
 
 
 @app.command("start")
@@ -59,10 +56,10 @@ def start_server(
         if response.status_code == 201:
             data = response.json()
             info = ManagedClientInfo.model_validate(data["info"])
-            console.print(f"Success: Started server for {path.absolute()}")
-            console.print(ManagedClientInfo.format(info))
+            print(f"Success: Started server for {path.absolute()}")
+            print(ManagedClientInfo.format(info))
         else:
-            console.print(f"Error: Starting server: {response.text}")
+            print(f"Error: Starting server: {response.text}")
 
 
 @app.command("stop")
@@ -78,9 +75,9 @@ def stop_server(
             "DELETE", "/delete", json={"path": str(path.absolute())}
         )
         if response.status_code == 204 or response.status_code == 200:
-            console.print(f"Success: Stopped server for {path.absolute()}")
+            print(f"Success: Stopped server for {path.absolute()}")
         else:
-            console.print(f"Error: Stopping server: {response.text}")
+            print(f"Error: Stopping server: {response.text}")
 
 
 if __name__ == "__main__":

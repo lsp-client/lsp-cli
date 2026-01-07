@@ -47,12 +47,3 @@ PaginationIdOpt = Annotated[
         help="Pagination token",
     ),
 ]
-
-MarkdownOpt = Annotated[
-    bool,
-    typer.Option(
-        "--markdown",
-        "-m",
-        help="Render output as Markdown.",
-    ),
-]
