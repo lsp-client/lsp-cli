@@ -5,10 +5,14 @@ from lsap.schema.definition import DefinitionRequest, DefinitionResponse
 
 from lsp_cli.utils.sync import cli_syncify
 
-from .. import options as op
+from . import options as op
 from .shared import create_locate, managed_client, print_resp
 
+app = typer.Typer()
 
+
+@app.command("definition")
+@app.command("def", hidden=True)
 @cli_syncify
 async def get_definition(
     locate: op.LocateOpt,
@@ -39,7 +43,7 @@ async def get_definition(
 
     async with managed_client(locate_obj.file_path) as client:
         resp_obj = await client.post(
-            "/definition",
+            "/capability/definition",
             DefinitionResponse,
             json=DefinitionRequest(
                 locate=locate_obj,

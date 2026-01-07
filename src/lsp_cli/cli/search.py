@@ -1,14 +1,20 @@
-from typing import Annotated
 from pathlib import Path
+from typing import Annotated
+
 import typer
-from lsap.schema.search import SearchRequest, SearchResponse
 from lsap.schema.models import SymbolKind
-from lsp_cli.utils.sync import cli_syncify
+from lsap.schema.search import SearchRequest, SearchResponse
+
 from lsp_cli.settings import settings
-from .. import options as op
+from lsp_cli.utils.sync import cli_syncify
+
+from . import options as op
 from .shared import managed_client, print_resp
 
+app = typer.Typer()
 
+
+@app.command("search")
 @cli_syncify
 async def search(
     query: Annotated[
@@ -40,7 +46,7 @@ async def search(
         )
 
         resp_obj = await client.post(
-            "/search",
+            "/capability/search",
             SearchResponse,
             json=SearchRequest(
                 query=query,

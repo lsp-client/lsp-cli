@@ -1,12 +1,19 @@
 from typing import Annotated, Literal
+
 import typer
 from lsap.schema.reference import ReferenceRequest, ReferenceResponse
-from lsp_cli.utils.sync import cli_syncify
+
 from lsp_cli.settings import settings
-from .. import options as op
-from .shared import managed_client, create_locate, print_resp
+from lsp_cli.utils.sync import cli_syncify
+
+from . import options as op
+from .shared import create_locate, managed_client, print_resp
+
+app = typer.Typer()
 
 
+@app.command("reference")
+@app.command("ref", hidden=True)
 @cli_syncify
 async def get_reference(
     locate: op.LocateOpt,
@@ -54,7 +61,7 @@ async def get_reference(
         )
 
         resp_obj = await client.post(
-            "/reference",
+            "/capability/reference",
             ReferenceResponse,
             json=ReferenceRequest(
                 locate=locate_obj,

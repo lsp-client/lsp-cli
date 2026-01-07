@@ -1,12 +1,18 @@
 from typing import Annotated
+
 import typer
 from lsap.schema.locate import LocateRequest, LocateResponse
+
 from lsp_cli.utils.sync import cli_syncify
-from .shared import managed_client, create_locate, print_resp
+
+from .shared import create_locate, managed_client, print_resp
+
+app = typer.Typer()
 
 
+@app.command("locate")
 @cli_syncify
-async def locate_command(
+async def get_location(
     locate: Annotated[str, typer.Argument(help="The locate string to parse.")],
     check: bool = typer.Option(
         False,
@@ -46,7 +52,7 @@ async def locate_command(
 
     async with managed_client(locate_obj.file_path) as client:
         resp_obj = await client.post(
-            "/locate", LocateResponse, json=LocateRequest(locate=locate_obj)
+            "/capability/locate", LocateResponse, json=LocateRequest(locate=locate_obj)
         )
 
     if resp_obj:

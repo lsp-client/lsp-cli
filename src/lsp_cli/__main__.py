@@ -25,6 +25,7 @@ app = typer.Typer(
         "terminal_width": 1000,
     },
     add_completion=False,
+    rich_markup_mode=None,
     pretty_exceptions_enable=False,
 )
 
@@ -32,20 +33,15 @@ app = typer.Typer(
 app.callback(invoke_without_command=True)(main_callback)
 
 # Add sub-typers
-app.add_typer(server_app, name="server")
-app.add_typer(rename.app, name="rename")
-
-# Register commands
-app.command("locate")(locate.locate_command)
-app.command("definition")(definition.get_definition)
-app.command("def", hidden=True)(definition.get_definition)
-app.command("hover")(hover.get_hover)
-app.command("reference")(reference.get_reference)
-app.command("ref", hidden=True)(reference.get_reference)
-app.command("outline")(outline.get_outline)
-app.command("symbol")(symbol.get_symbol)
-app.command("sym", hidden=True)(symbol.get_symbol)
-app.command("search")(search.search)
+app.add_typer(server_app)
+app.add_typer(rename.app)
+app.add_typer(definition.app)
+app.add_typer(hover.app)
+app.add_typer(locate.app)
+app.add_typer(reference.app)
+app.add_typer(outline.app)
+app.add_typer(symbol.app)
+app.add_typer(search.app)
 
 
 def run():

@@ -1,5 +1,6 @@
-from typing import Annotated
 from pathlib import Path
+from typing import Annotated
+
 import typer
 from lsap.schema.rename import (
     RenameExecuteRequest,
@@ -7,14 +8,19 @@ from lsap.schema.rename import (
     RenamePreviewRequest,
     RenamePreviewResponse,
 )
+
 from lsp_cli.utils.sync import cli_syncify
-from .. import options as op
-from .shared import managed_client, create_locate, print_resp
 
-app = typer.Typer(help="Rename a symbol at a specific location.")
+from . import options as op
+from .shared import create_locate, managed_client, print_resp
+
+app = typer.Typer(name="rename", help="Rename a symbol at a specific location.")
 
 
-@app.command("preview")
+@app.command(
+    "preview",
+    help="Preview the effects of renaming a symbol at a specific location.",
+)
 @cli_syncify
 async def rename_preview(
     new_name: Annotated[str, typer.Argument(help="The new name for the symbol.")],
@@ -24,7 +30,7 @@ async def rename_preview(
 
     async with managed_client(locate_obj.file_path) as client:
         resp_obj = await client.post(
-            "/rename/preview",
+            "/capability/rename/preview",
             RenamePreviewResponse,
             json=RenamePreviewRequest(locate=locate_obj, new_name=new_name),
         )
@@ -35,7 +41,10 @@ async def rename_preview(
             print("Warning: No rename possibilities found at the location")
 
 
-@app.command("execute")
+@app.command(
+    "execute",
+    help="Execute a rename operation using the ID from a previous preview.",
+)
 @cli_syncify
 async def rename_execute(
     rename_id: Annotated[
@@ -55,7 +64,7 @@ async def rename_execute(
 
     async with managed_client(workspace) as client:
         resp_obj = await client.post(
-            "/rename/execute",
+            "/capability/rename/execute",
             RenameExecuteResponse,
             json=RenameExecuteRequest(
                 rename_id=rename_id,

@@ -1,45 +1,21 @@
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from pathlib import Path
 
 import anyio
 import asyncer
 import loguru
-import lsp_client
 import uvicorn
 import xxhash
 from attrs import define, field
-from litestar import Litestar, get, post
-from litestar.datastructures import State
+from litestar import Litestar
+from litestar.di import Provide
 from loguru import logger as global_logger
-from lsap.capability.definition import DefinitionCapability, DefinitionClient
-from lsap.capability.hover import HoverCapability, HoverClient
-from lsap.capability.locate import LocateCapability, LocateClient
-from lsap.capability.outline import OutlineCapability, OutlineClient
-from lsap.capability.reference import ReferenceCapability, ReferenceClient
-from lsap.capability.rename import (
-    RenameExecuteCapability,
-    RenamePreviewCapability,
-    RenameClient,
-)
-from lsap.capability.search import SearchCapability, SearchClient
-from lsap.capability.symbol import SymbolCapability, SymbolClient
-from lsap.schema.definition import DefinitionRequest, DefinitionResponse
-from lsap.schema.hover import HoverRequest, HoverResponse
-from lsap.schema.locate import LocateRequest, LocateResponse
-from lsap.schema.outline import OutlineRequest, OutlineResponse
-from lsap.schema.reference import ReferenceRequest, ReferenceResponse
-from lsap.schema.rename import (
-    RenameExecuteRequest,
-    RenameExecuteResponse,
-    RenamePreviewRequest,
-    RenamePreviewResponse,
-)
-from lsap.schema.search import SearchRequest, SearchResponse
-from lsap.schema.symbol import SymbolRequest, SymbolResponse
-from lsp_client import Client
+from lsp_client.client import Client
 
 from lsp_cli.client import TargetClient
+from lsp_cli.manager.capability import CapabilityController
 from lsp_cli.settings import LOG_DIR, RUNTIME_DIR, settings
 
 from .models import ManagedClientInfo
@@ -125,161 +101,20 @@ class ManagedClient:
         self._server.should_exit = True
         self._server_scope.cancel()
 
-    def _create_app(self, client: Client) -> Litestar:
-        @get("/health")
-        async def health() -> str:
-            return "ok"
+    async def _serve(self) -> None:
+        async def provide_client() -> AsyncGenerator[Client]:
+            async with self.target.client_cls(
+                workspace=self.target.project_path
+            ) as client:
+                yield client
 
-        @post("/shutdown")
-        async def shutdown() -> None:
-            self._logger.info("Shutdown requested")
-            self.stop()
-
-        @post("/locate")
-        async def handle_locate(
-            state: State, data: LocateRequest
-        ) -> LocateResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, LocateClient):
-                raise TypeError("Client does not support locate capability")
-            if not state.locate:
-                state.locate = LocateCapability(client)
-            assert isinstance(state.locate, LocateCapability)
-
-            return await state.locate(data)
-
-        @post("/definition")
-        async def handle_definition(
-            state: State,
-            data: DefinitionRequest,
-        ) -> DefinitionResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, DefinitionClient):
-                raise TypeError("Client does not support definition capability")
-            if not state.definition:
-                state.definition = DefinitionCapability(client)
-            assert isinstance(state.definition, DefinitionCapability)
-
-            return await state.definition(data)
-
-        @post("/hover")
-        async def handle_hover(
-            state: State, data: HoverRequest
-        ) -> HoverResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, HoverClient):
-                raise TypeError("Client does not support hover capability")
-            if not state.hover:
-                state.hover = HoverCapability(client)
-            assert isinstance(state.hover, HoverCapability)
-
-            return await state.hover(data)
-
-        @post("/reference")
-        async def handle_reference(
-            state: State, data: ReferenceRequest
-        ) -> ReferenceResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, ReferenceClient):
-                raise TypeError("Client does not support reference capability")
-            if not state.reference:
-                state.reference = ReferenceCapability(client)
-            assert isinstance(state.reference, ReferenceCapability)
-
-            return await state.reference(data)
-
-        @post("/outline")
-        async def handle_outline(
-            state: State, data: OutlineRequest
-        ) -> OutlineResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, OutlineClient):
-                raise TypeError("Client does not support outline capability")
-            if not state.outline:
-                state.outline = OutlineCapability(client)
-            assert isinstance(state.outline, OutlineCapability)
-
-            return await state.outline(data)
-
-        @post("/symbol")
-        async def handle_symbol(
-            state: State, data: SymbolRequest
-        ) -> SymbolResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, SymbolClient):
-                raise TypeError("Client does not support symbol capability")
-            if not state.symbol:
-                state.symbol = SymbolCapability(client)
-            assert isinstance(state.symbol, SymbolCapability)
-
-            return await state.symbol(data)
-
-        @post("/search")
-        async def handle_search(
-            state: State, data: SearchRequest
-        ) -> SearchResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, SearchClient):
-                raise TypeError("Client does not support search capability")
-            if not state.search:
-                state.search = SearchCapability(client)
-            assert isinstance(state.search, SearchCapability)
-
-            return await state.search(data)
-
-        @post("/rename/preview")
-        async def handle_rename_preview(
-            state: State,
-            data: RenamePreviewRequest,
-        ) -> RenamePreviewResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, RenameClient):
-                raise TypeError("Client does not support rename capability")
-            if not state.rename_preview:
-                state.rename_preview = RenamePreviewCapability(client)
-            assert isinstance(state.rename_preview, RenamePreviewCapability)
-
-            return await state.rename_preview(data)
-
-        @post("/rename/execute")
-        async def handle_rename_execute(
-            state: State,
-            data: RenameExecuteRequest,
-        ) -> RenameExecuteResponse | None:
-            self._reset_timeout()
-            if not isinstance(client, RenameClient):
-                raise TypeError("Client does not support rename capability")
-            if not state.rename_execute:
-                state.rename_execute = RenameExecuteCapability(client)
-            assert isinstance(state.rename_execute, RenameExecuteCapability)
-
-            return await state.rename_execute(data)
-
-        return Litestar(
-            route_handlers=[
-                health,
-                shutdown,
-                handle_locate,
-                handle_definition,
-                handle_hover,
-                handle_reference,
-                handle_outline,
-                handle_symbol,
-                handle_search,
-                handle_rename_preview,
-                handle_rename_execute,
-            ],
+        app = Litestar(
+            route_handlers=[CapabilityController],
+            dependencies={"client": Provide(provide_client)},
             debug=settings.debug,
         )
 
-    async def _serve(self, client: Client) -> None:
-        app = self._create_app(client)
-
-        config = uvicorn.Config(
-            app,
-            uds=str(self.uds_path),
-            loop="asyncio",
-        )
+        config = uvicorn.Config(app, uds=str(self.uds_path), loop="asyncio")
         self._server = uvicorn.Server(config)
 
         async with asyncer.create_task_group() as tg:
@@ -300,13 +135,7 @@ class ManagedClient:
         await uds_path.parent.mkdir(parents=True, exist_ok=True)
 
         try:
-            lsp_client.enable_logging()
-            self._logger.debug("Client MRO: {}", self.target.client_cls.mro())
-            async with self.target.client_cls(
-                workspace=self.target.project_path
-            ) as client:
-                self._logger.info("LSP client initialized successfully")
-                await self._serve(client)
+            await self._serve()
         finally:
             self._logger.info("Cleaning up client")
             await uds_path.unlink(missing_ok=True)
