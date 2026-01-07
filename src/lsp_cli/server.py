@@ -43,7 +43,7 @@ def list_servers():
                 return
             console.print(ManagedClientInfo.format(servers))
         else:
-            console.print(f"[red]Error listing servers: {response.text}[/red]")
+            console.print(f"Error: Listing servers: {response.text}")
 
 
 @app.command("start")
@@ -59,10 +59,10 @@ def start_server(
         if response.status_code == 201:
             data = response.json()
             info = ManagedClientInfo.model_validate(data["info"])
-            console.print(f"[green]Started server for {path.absolute()}[/green]")
+            console.print(f"Success: Started server for {path.absolute()}")
             console.print(ManagedClientInfo.format(info))
         else:
-            console.print(f"[red]Error starting server: {response.text}[/red]")
+            console.print(f"Error: Starting server: {response.text}")
 
 
 @app.command("stop")
@@ -78,9 +78,9 @@ def stop_server(
             "DELETE", "/delete", json={"path": str(path.absolute())}
         )
         if response.status_code == 204 or response.status_code == 200:
-            console.print(f"[green]Stopped server for {path.absolute()}[/green]")
+            console.print(f"Success: Stopped server for {path.absolute()}")
         else:
-            console.print(f"[red]Error stopping server: {response.text}[/red]")
+            console.print(f"Error: Stopping server: {response.text}")
 
 
 if __name__ == "__main__":
