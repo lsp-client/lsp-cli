@@ -8,6 +8,7 @@ import typer
 from loguru import logger
 from lsap.definition import DefinitionCapability, DefinitionClient
 from lsap.hover import HoverCapability, HoverClient
+from lsap.locate import LocateCapability
 from lsap.outline import OutlineCapability, OutlineClient
 from lsap.reference import ReferenceCapability, ReferenceClient
 from lsap.rename import RenameCapability, RenameClient
@@ -16,7 +17,7 @@ from lsap.symbol import SymbolCapability, SymbolClient
 from lsap.utils.locate import parse_locate_string
 from lsap_schema.definition import DefinitionRequest
 from lsap_schema.hover import HoverRequest
-from lsap_schema.locate import Locate
+from lsap_schema.locate import Locate, LocateRequest
 from lsap_schema.models import SymbolKind
 from lsap_schema.outline import OutlineRequest
 from lsap_schema.reference import ReferenceRequest
@@ -42,12 +43,13 @@ from . import options as op
 
 app = typer.Typer(
     help="LSP CLI: A command-line tool for interacting with Language Server Protocol (LSP) features.",
-    add_completion=False,
     context_settings={
         "help_option_names": ["-h", "--help"],
         "max_content_width": 1000,
         "terminal_width": 1000,
     },
+    add_completion=False,
+    rich_markup_mode=None,
     pretty_exceptions_enable=False,
 )
 app.add_typer(server_app, name="server")
@@ -74,6 +76,20 @@ async def init_client(path: Path) -> AsyncGenerator[Client]:
 
 def create_locate(locate_str: str) -> Locate:
     return parse_locate_string(locate_str)
+
+
+def print_code_context(file_path: Path, line: int, context: int = 3):
+    if not file_path.exists():
+        return
+    try:
+        lines = file_path.read_text().splitlines()
+        start = max(0, line - 1 - context)
+        end = min(len(lines), line + context)
+        for i in range(start, end):
+            prefix = "> " if i == line - 1 else "  "
+            print(f"{prefix}{i + 1:4} | {lines[i]}")
+    except Exception as e:
+        logger.warning(f"Could not print code context: {e}")
 
 
 def print_resp(resp):
@@ -132,11 +148,38 @@ Examples:
 - `foo.py:MyClass`
 """,
 )
-def locate_command(
+@cli_syncify
+async def locate_command(
     locate: Annotated[str, typer.Argument(help="The locate string to parse.")],
+    check: bool = typer.Option(
+        False,
+        "--check",
+        "-c",
+        help="Verify if the target exists in the file and show its context.",
+    ),
 ):
     locate_obj = create_locate(locate)
-    print(locate_obj)
+    resp = None
+    error_msg = None
+
+    try:
+        async with init_client(locate_obj.file_path) as client:
+            cap = LocateCapability(client)  # type: ignore
+            req = LocateRequest(locate=locate_obj)
+            resp = await cap(req)
+            if not resp and check:
+                error_msg = f"Target '{locate}' not found"
+    except Exception as e:
+        if check:
+            error_msg = get_msg(e)
+
+    if resp:
+        print_resp(resp)
+        print_code_context(resp.file_path, resp.position.line)
+    elif error_msg:
+        raise RuntimeError(error_msg)
+    else:
+        print(locate_obj)
 
 
 @app.command(
@@ -425,11 +468,18 @@ async def rename(
     new_name: Annotated[str, typer.Argument(help="The new name for the symbol.")],
     locate: op.LocateOpt,
     execute: Annotated[
-        str | None,
+        bool,
         typer.Option(
             "--execute",
             "-e",
-            help="Execute the rename operation. Can optionally take a rename ID from a previous preview. If the flag is present but no ID is provided, it will automatically perform a preview first.",
+            help="Execute the rename operation.",
+        ),
+    ] = False,
+    rename_id: Annotated[
+        str | None,
+        typer.Option(
+            "--id",
+            help="Rename ID from a previous preview. If not provided and --execute is set, it will perform a preview first in the same session.",
         ),
     ] = None,
 ):
@@ -441,8 +491,8 @@ async def rename(
 
         cap = RenameCapability(client)
 
-        rename_id = execute
-        if not rename_id:
+        rid = rename_id
+        if not rid:
             # Always do a preview first if no ID is provided to get the rename_id and see what will change
             preview_req = RenamePreviewRequest(locate=locate_obj, new_name=new_name)
             if resp := await cap(RenameRequest(root=preview_req)):
@@ -450,11 +500,10 @@ async def rename(
                 if not isinstance(preview_resp, RenamePreviewResponse):
                     raise RuntimeError("Unexpected response from rename preview")
 
-                if execute is None:
+                rid = preview_resp.rename_id
+                if not execute:
                     print_resp(preview_resp)
                     return
-
-                rename_id = preview_resp.rename_id
             else:
                 print("Warning: No rename possibilities found at the location")
                 return
@@ -463,7 +512,7 @@ async def rename(
         execute_req = RenameExecuteRequest(
             locate=locate_obj,
             new_name=new_name,
-            rename_id=rename_id,
+            rename_id=rid,
         )
         if exec_resp := await cap(RenameRequest(root=execute_req)):
             print_resp(exec_resp.root)

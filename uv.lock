@@ -222,7 +222,7 @@ wheels = [
 [[package]]
 name = "lsap"
 version = "0.1.0"
-source = { git = "https://github.com/lsp-client/LSAP.git?subdirectory=python#001b53a0bb89eb64d1442057ad586115ef085e7d" }
+source = { git = "https://github.com/lsp-client/LSAP.git?subdirectory=python#d633485a4a5246fb12cd1d87b90a03f1dd7da15e" }
 dependencies = [
     { name = "anyio" },
     { name = "asyncer" },
@@ -237,7 +237,7 @@ dependencies = [
 [[package]]
 name = "lsap-schema"
 version = "0.1.0"
-source = { git = "https://github.com/lsp-client/LSAP.git#001b53a0bb89eb64d1442057ad586115ef085e7d" }
+source = { git = "https://github.com/lsp-client/LSAP.git#d633485a4a5246fb12cd1d87b90a03f1dd7da15e" }
 dependencies = [
     { name = "lsprotocol" },
     { name = "pydantic" },
@@ -306,7 +306,7 @@ dev = [
 [[package]]
 name = "lsp-client"
 version = "0.2.4"
-source = { git = "https://github.com/lsp-client/python-sdk.git?branch=release%2Fv0.3#d206432911d833fb222df188c2620fd19a473ee9" }
+source = { git = "https://github.com/lsp-client/python-sdk.git?branch=release%2Fv0.3#78e23ccf63f08fa17b5500a82c6d50bfbca4378c" }
 dependencies = [
     { name = "aioshutil" },
     { name = "anyio" },
