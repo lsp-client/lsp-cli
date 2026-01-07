@@ -10,9 +10,34 @@ import uvicorn
 import xxhash
 from attrs import define, field
 from litestar import Litestar, get, post
+from litestar.datastructures import State
 from loguru import logger as global_logger
+from lsap.capability.definition import DefinitionCapability, DefinitionClient
+from lsap.capability.hover import HoverCapability, HoverClient
+from lsap.capability.locate import LocateCapability, LocateClient
+from lsap.capability.outline import OutlineCapability, OutlineClient
+from lsap.capability.reference import ReferenceCapability, ReferenceClient
+from lsap.capability.rename import (
+    RenameExecuteCapability,
+    RenamePreviewCapability,
+    RenameClient,
+)
+from lsap.capability.search import SearchCapability, SearchClient
+from lsap.capability.symbol import SymbolCapability, SymbolClient
+from lsap.schema.definition import DefinitionRequest, DefinitionResponse
+from lsap.schema.hover import HoverRequest, HoverResponse
+from lsap.schema.locate import LocateRequest, LocateResponse
+from lsap.schema.outline import OutlineRequest, OutlineResponse
+from lsap.schema.reference import ReferenceRequest, ReferenceResponse
+from lsap.schema.rename import (
+    RenameExecuteRequest,
+    RenameExecuteResponse,
+    RenamePreviewRequest,
+    RenamePreviewResponse,
+)
+from lsap.schema.search import SearchRequest, SearchResponse
+from lsap.schema.symbol import SymbolRequest, SymbolResponse
 from lsp_client import Client
-from lsp_client.jsonrpc.types import RawNotification, RawRequest, RawResponsePackage
 
 from lsp_cli.client import TargetClient
 from lsp_cli.settings import LOG_DIR, RUNTIME_DIR, settings
@@ -110,32 +135,146 @@ class ManagedClient:
             self._logger.info("Shutdown requested")
             self.stop()
 
-        @post("/request")
-        async def handle_request(data: RawRequest) -> RawResponsePackage:
+        @post("/locate")
+        async def handle_locate(
+            state: State, data: LocateRequest
+        ) -> LocateResponse | None:
             self._reset_timeout()
-            self._logger.debug("Handling request: {}", data["method"])
-            response = await client.get_server().request(data)
-            self._logger.trace("Request response: {}", response)
-            return response
+            if not isinstance(client, LocateClient):
+                raise TypeError("Client does not support locate capability")
+            if not state.locate:
+                state.locate = LocateCapability(client)
+            assert isinstance(state.locate, LocateCapability)
 
-        @post("/notify")
-        async def handle_notify(data: RawNotification) -> None:
+            return await state.locate(data)
+
+        @post("/definition")
+        async def handle_definition(
+            state: State,
+            data: DefinitionRequest,
+        ) -> DefinitionResponse | None:
             self._reset_timeout()
-            self._logger.debug("Handling notification: {}", data["method"])
-            await client.get_server().notify(data)
+            if not isinstance(client, DefinitionClient):
+                raise TypeError("Client does not support definition capability")
+            if not state.definition:
+                state.definition = DefinitionCapability(client)
+            assert isinstance(state.definition, DefinitionCapability)
+
+            return await state.definition(data)
+
+        @post("/hover")
+        async def handle_hover(
+            state: State, data: HoverRequest
+        ) -> HoverResponse | None:
+            self._reset_timeout()
+            if not isinstance(client, HoverClient):
+                raise TypeError("Client does not support hover capability")
+            if not state.hover:
+                state.hover = HoverCapability(client)
+            assert isinstance(state.hover, HoverCapability)
+
+            return await state.hover(data)
+
+        @post("/reference")
+        async def handle_reference(
+            state: State, data: ReferenceRequest
+        ) -> ReferenceResponse | None:
+            self._reset_timeout()
+            if not isinstance(client, ReferenceClient):
+                raise TypeError("Client does not support reference capability")
+            if not state.reference:
+                state.reference = ReferenceCapability(client)
+            assert isinstance(state.reference, ReferenceCapability)
+
+            return await state.reference(data)
+
+        @post("/outline")
+        async def handle_outline(
+            state: State, data: OutlineRequest
+        ) -> OutlineResponse | None:
+            self._reset_timeout()
+            if not isinstance(client, OutlineClient):
+                raise TypeError("Client does not support outline capability")
+            if not state.outline:
+                state.outline = OutlineCapability(client)
+            assert isinstance(state.outline, OutlineCapability)
+
+            return await state.outline(data)
+
+        @post("/symbol")
+        async def handle_symbol(
+            state: State, data: SymbolRequest
+        ) -> SymbolResponse | None:
+            self._reset_timeout()
+            if not isinstance(client, SymbolClient):
+                raise TypeError("Client does not support symbol capability")
+            if not state.symbol:
+                state.symbol = SymbolCapability(client)
+            assert isinstance(state.symbol, SymbolCapability)
+
+            return await state.symbol(data)
+
+        @post("/search")
+        async def handle_search(
+            state: State, data: SearchRequest
+        ) -> SearchResponse | None:
+            self._reset_timeout()
+            if not isinstance(client, SearchClient):
+                raise TypeError("Client does not support search capability")
+            if not state.search:
+                state.search = SearchCapability(client)
+            assert isinstance(state.search, SearchCapability)
+
+            return await state.search(data)
+
+        @post("/rename/preview")
+        async def handle_rename_preview(
+            state: State,
+            data: RenamePreviewRequest,
+        ) -> RenamePreviewResponse | None:
+            self._reset_timeout()
+            if not isinstance(client, RenameClient):
+                raise TypeError("Client does not support rename capability")
+            if not state.rename_preview:
+                state.rename_preview = RenamePreviewCapability(client)
+            assert isinstance(state.rename_preview, RenamePreviewCapability)
+
+            return await state.rename_preview(data)
+
+        @post("/rename/execute")
+        async def handle_rename_execute(
+            state: State,
+            data: RenameExecuteRequest,
+        ) -> RenameExecuteResponse | None:
+            self._reset_timeout()
+            if not isinstance(client, RenameClient):
+                raise TypeError("Client does not support rename capability")
+            if not state.rename_execute:
+                state.rename_execute = RenameExecuteCapability(client)
+            assert isinstance(state.rename_execute, RenameExecuteCapability)
+
+            return await state.rename_execute(data)
 
         return Litestar(
             route_handlers=[
-                handle_request,
-                handle_notify,
                 health,
                 shutdown,
+                handle_locate,
+                handle_definition,
+                handle_hover,
+                handle_reference,
+                handle_outline,
+                handle_symbol,
+                handle_search,
+                handle_rename_preview,
+                handle_rename_execute,
             ],
             debug=settings.debug,
         )
 
     async def _serve(self, client: Client) -> None:
         app = self._create_app(client)
+
         config = uvicorn.Config(
             app,
             uds=str(self.uds_path),

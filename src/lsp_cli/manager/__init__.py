@@ -2,30 +2,27 @@ from __future__ import annotations
 
 import subprocess
 import sys
-from collections.abc import AsyncGenerator
-from contextlib import asynccontextmanager
-from typing import cast
 
-import anyio
 import httpx
-from litestar import Litestar
-from litestar.datastructures import State
 
-from lsp_cli.settings import LOG_DIR, MANAGER_UDS_PATH
+from lsp_cli.settings import MANAGER_UDS_PATH
+from lsp_cli.utils.http import HttpClient
 from lsp_cli.utils.socket import is_socket_alive
 
-from .manager import Manager
+from .manager import Manager, get_manager, manager_lifespan
 from .models import (
     CreateClientRequest,
     CreateClientResponse,
     DeleteClientRequest,
     DeleteClientResponse,
     ManagedClientInfo,
+    ManagedClientInfoList,
 )
 
 __all__ = [
     "Manager",
     "ManagedClientInfo",
+    "ManagedClientInfoList",
     "CreateClientRequest",
     "CreateClientResponse",
     "DeleteClientRequest",
@@ -36,19 +33,7 @@ __all__ = [
 ]
 
 
-@asynccontextmanager
-async def manager_lifespan(app: Litestar) -> AsyncGenerator[None]:
-    await anyio.Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
-    async with Manager().run() as manager:
-        app.state.manager = manager
-        yield
-
-
-def get_manager(state: State) -> Manager:
-    return cast(Manager, state.manager)
-
-
-def connect_manager() -> httpx.Client:
+def connect_manager() -> HttpClient:
     if not is_socket_alive(MANAGER_UDS_PATH):
         subprocess.Popen(
             (sys.executable, "-m", "lsp_cli.manager"),
@@ -58,7 +43,9 @@ def connect_manager() -> httpx.Client:
             start_new_session=True,
         )
 
-    return httpx.Client(
-        transport=httpx.HTTPTransport(uds=str(MANAGER_UDS_PATH), retries=5),
-        base_url="http://localhost",
+    return HttpClient(
+        httpx.Client(
+            transport=httpx.HTTPTransport(uds=str(MANAGER_UDS_PATH), retries=5),
+            base_url="http://localhost",
+        )
     )

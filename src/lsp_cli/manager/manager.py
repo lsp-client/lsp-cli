@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Final
+from typing import Final, cast
 
+import anyio
 import asyncer
 from attrs import Factory, define, field
 from litestar import Litestar, delete, get, post
@@ -15,7 +17,6 @@ from loguru import logger
 from lsp_cli.client import find_client
 from lsp_cli.settings import LOG_DIR, settings
 
-from . import get_manager, manager_lifespan
 from .client import ManagedClient, get_client_id
 from .models import (
     CreateClientRequest,
@@ -108,6 +109,18 @@ class Manager:
         finally:
             logger.info("[Manager] Shutting down manager")
             logger.remove(self._logger_sink_id)
+
+
+def get_manager(state: State) -> Manager:
+    return cast(Manager, state.manager)
+
+
+@asynccontextmanager
+async def manager_lifespan(app: Litestar) -> AsyncGenerator[None]:
+    await anyio.Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+    async with Manager().run() as manager:
+        app.state.manager = manager
+        yield
 
 
 logger.add(

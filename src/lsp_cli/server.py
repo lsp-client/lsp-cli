@@ -1,9 +1,17 @@
 from pathlib import Path
 
-import httpx
 import typer
 
-from lsp_cli.manager import ManagedClientInfo, connect_manager
+from lsp_cli.manager import (
+    CreateClientRequest,
+    CreateClientResponse,
+    DeleteClientRequest,
+    DeleteClientResponse,
+    ManagedClientInfo,
+    ManagedClientInfoList,
+    connect_manager,
+)
+from lsp_cli.utils.http import HttpClient
 
 app = typer.Typer(
     name="server",
@@ -24,7 +32,7 @@ def callback(ctx: typer.Context):
         list_servers()
 
 
-def get_manager_client() -> httpx.Client:
+def get_manager_client() -> HttpClient:
     return connect_manager()
 
 
@@ -32,9 +40,8 @@ def get_manager_client() -> httpx.Client:
 def list_servers():
     """List all currently running and managed LSP servers."""
     with get_manager_client() as client:
-        response = client.get("/list")
-        response.raise_for_status()
-        servers = [ManagedClientInfo.model_validate(s) for s in response.json()]
+        resp = client.get("/list", ManagedClientInfoList)
+        servers = resp.root if resp else []
         if not servers:
             print("No servers running.")
             return
@@ -50,10 +57,11 @@ def start_server(
 ):
     """Start a background LSP server for the project containing the specified path."""
     with get_manager_client() as client:
-        response = client.post("/create", json={"path": str(path.absolute())})
-        response.raise_for_status()
-        data = response.json()
-        info = ManagedClientInfo.model_validate(data["info"])
+        resp = client.post(
+            "/create", CreateClientResponse, json=CreateClientRequest(path=path)
+        )
+        assert resp is not None
+        info = resp.info
         print(f"Success: Started server for {path.absolute()}")
         print(ManagedClientInfo.format(info))
 
@@ -67,10 +75,9 @@ def stop_server(
 ):
     """Stop the background LSP server for the project containing the specified path."""
     with get_manager_client() as client:
-        response = client.request(
-            "DELETE", "/delete", json={"path": str(path.absolute())}
+        client.delete(
+            "/delete", DeleteClientResponse, json=DeleteClientRequest(path=path)
         )
-        response.raise_for_status()
         print(f"Success: Stopped server for {path.absolute()}")
 
 

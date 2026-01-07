@@ -3,7 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from lsp_client.jsonrpc.types import RawNotification, RawRequest, RawResponsePackage
-from pydantic import BaseModel
+from pydantic import BaseModel, RootModel
 
 
 class ManagedClientInfo(BaseModel):
@@ -20,6 +20,10 @@ class ManagedClientInfo(BaseModel):
                 f"{info.language:<10} {info.project_path} ({info.remaining_time:.1f}s)"
             )
         return "\n".join(lines)
+
+
+class ManagedClientInfoList(RootModel[list[ManagedClientInfo]]):
+    pass
 
 
 class CreateClientRequest(BaseModel):
