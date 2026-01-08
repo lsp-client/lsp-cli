@@ -17,8 +17,6 @@ dependencies = [
     "attrs>=25.4.0",
     "httpx>=0.28.1",
     "loguru>=0.7.3",
-    "lsap",
-    "lsp-client",
     "platformdirs>=4.5.1",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
@@ -27,6 +25,8 @@ dependencies = [
     "litestar>=2.19.0",
     "xxhash>=3.6.0",
     "tenacity>=9.1.2",
+    "lsp-client>=0.3.0",
+    "lsap-sdk>=0.1.0",
 ]
 
 [project.scripts]
@@ -35,9 +35,6 @@ lsp = "lsp_cli.__main__:run"
 [build-system]
 requires = ["uv_build>=0.9.9,<0.10.0"]
 build-backend = "uv_build"
-
-[tool.uv.sources]
-lsap = { git = "https://github.com/lsp-client/LSAP.git" }
 
 [dependency-groups]
 dev = [

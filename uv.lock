@@ -220,9 +220,9 @@ wheels = [
 ]
 
 [[package]]
-name = "lsap"
+name = "lsap-sdk"
 version = "0.1.0"
-source = { git = "https://github.com/lsp-client/LSAP.git#fce1912426e7db3abbd3ec23c4f7bfbf23a5f219" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "asyncer" },
@@ -232,6 +232,10 @@ dependencies = [
     { name = "lsprotocol" },
     { name = "pydantic" },
     { name = "python-liquid" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/36/93/74a264d62580a4d3db8bbb17372d346afef9f9e788d22019fddf5cfeceab/lsap_sdk-0.1.0.tar.gz", hash = "sha256:cb8b7372db46f312ca7c964589c5f687f8c120d320b8e9806943fa6961203df9", size = 24653, upload-time = "2026-01-08T15:26:38.618Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3b/d8/7df2efda7c55226c5c7022d7489e6b9dbd8634191b055062af88480d3017/lsap_sdk-0.1.0-py3-none-any.whl", hash = "sha256:6328314c1524e230ee443de3e1fb35e583989071d7a4de3739d3f33c1314b0da", size = 40342, upload-time = "2026-01-08T15:26:37.408Z" },
 ]
 
 [[package]]
@@ -245,7 +249,7 @@ dependencies = [
     { name = "httpx" },
     { name = "litestar" },
     { name = "loguru" },
-    { name = "lsap" },
+    { name = "lsap-sdk" },
     { name = "lsp-client" },
     { name = "platformdirs" },
     { name = "pydantic" },
@@ -273,8 +277,8 @@ requires-dist = [
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "litestar", specifier = ">=2.19.0" },
     { name = "loguru", specifier = ">=0.7.3" },
-    { name = "lsap", git = "https://github.com/lsp-client/LSAP.git" },
-    { name = "lsp-client" },
+    { name = "lsap-sdk", specifier = ">=0.1.0" },
+    { name = "lsp-client", specifier = ">=0.3.0" },
     { name = "platformdirs", specifier = ">=4.5.1" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
@@ -295,8 +299,8 @@ dev = [
 
 [[package]]
 name = "lsp-client"
-version = "0.2.4"
-source = { git = "https://github.com/lsp-client/lsp-client.git?branch=release%2Fv0.3#a231eca91d0912a50dcf6613f1160f4d8a2f3d2b" }
+version = "0.3.0"
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "aioshutil" },
     { name = "anyio" },
@@ -307,6 +311,10 @@ dependencies = [
     { name = "pydantic-settings" },
     { name = "semver" },
     { name = "tenacity" },
+]
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/81/45/441a2334da213350531625b121472c0e6289e9f8bde3bcc4bea3f0625895/lsp_client-0.3.0.tar.gz", hash = "sha256:0fe16e8c44aeed9d317d5b1dfaa904d4a1369107340e591ec1207f0bc82a971a" }
+wheels = [
+    { url = "https://mirrors.aliyun.com/pypi/packages/3a/f3/a053926a859a361b8eca8154e468801d227592040a3ce68d288adc4037b1/lsp_client-0.3.0-py3-none-any.whl", hash = "sha256:392caae2b1255405fd182cdffe905803f80186c251c2136e4a1eb0d1a4cd3f81" },
 ]
 
 [[package]]
