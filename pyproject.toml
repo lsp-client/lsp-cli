@@ -1,9 +1,16 @@
 [project]
 name = "lsp-cli"
 version = "0.0.2"
-description = "Add your description here"
+description = "A powerful command-line interface for the Language Server Agent Protocol (LSAP)"
 readme = "README.md"
+authors = [{ name = "observerw", email = "wozluohd@gmail.com" }]
 requires-python = ">=3.13"
+keywords = ["Language Server Protocol", "LSP", "CLI", "Developer Tools", "LSAP"]
+classifiers = [
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.13",
+    "License :: OSI Approved :: MIT License",
+]
 dependencies = [
     "anyio>=4.12.0",
     "asyncer>=0.0.12",
