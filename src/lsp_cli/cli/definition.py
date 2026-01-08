@@ -12,7 +12,6 @@ app = typer.Typer()
 
 
 @app.command("definition")
-@app.command("def", hidden=True)
 @cli_syncify
 async def get_definition(
     locate: op.LocateOpt,
@@ -29,7 +28,7 @@ async def get_definition(
     type_def: bool = typer.Option(False, "--type", help="Search for type definition."),
 ):
     """
-    Find the definition (default), declaration (--decl), or type definition (--type) of a symbol. (alias: def)
+    Find the definition (default), declaration (--decl), or type definition (--type) of a symbol.
     """
     if decl and type_def:
         raise ValueError("--decl and --type are mutually exclusive")

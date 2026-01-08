@@ -102,7 +102,6 @@ class ManagedClient:
 
     async def _serve(self) -> None:
         from litestar import Request, Response
-        from litestar.exceptions import HTTPException
 
         @asynccontextmanager
         async def lifespan(app: Litestar) -> AsyncGenerator[None]:

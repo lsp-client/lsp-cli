@@ -10,13 +10,12 @@ app = typer.Typer()
 
 
 @app.command("symbol")
-@app.command("sym", hidden=True)
 @cli_syncify
 async def get_symbol(
     locate: op.LocateOpt,
 ):
     """
-    Get detailed symbol information at a specific location. (alias: sym)
+    Get detailed symbol information at a specific location.
     """
     locate_obj = create_locate(locate)
 

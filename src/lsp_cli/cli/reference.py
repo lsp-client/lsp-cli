@@ -13,7 +13,6 @@ app = typer.Typer()
 
 
 @app.command("reference")
-@app.command("ref", hidden=True)
 @cli_syncify
 async def get_reference(
     locate: op.LocateOpt,
@@ -41,7 +40,7 @@ async def get_reference(
     pagination_id: op.PaginationIdOpt = None,
 ):
     """
-    Find references (default) or implementations (--impl) of a symbol. (alias: ref)
+    Find references (default) or implementations (--impl) of a symbol.
     """
     if impl and references:
         raise ValueError("--impl and --ref are mutually exclusive")
