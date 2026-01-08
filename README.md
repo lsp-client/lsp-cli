@@ -1,7 +1,7 @@
 # LSP CLI
 
 [![PyPI](https://img.shields.io/pypi/v/lsp-cli.svg)](https://pypi.org/project/lsp-cli/)
-[![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)](https://python.org)
+[![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 A powerful command-line interface for the [**Language Server Agent Protocol (LSAP)**](https://github.com/lsp-client/LSAP). `lsp-cli` provides a bridge between traditional [Language Server Protocol (LSP)](https://microsoft.github.io/language-server-protocol/) servers and high-level agentic workflows, offering structured data access and a robust background server management system.
@@ -16,7 +16,19 @@ Built on top of [lsp-client](https://github.com/lsp-client/lsp-client) and [LSAP
 - **🧩 LSAP Integration**: Leverages the Language Server Agent Protocol for structured, agent-friendly responses with built-in pagination and text-based location finding.
 - **⚡ Async-First**: Built with `anyio` and `asyncer` for high-performance concurrent operations.
 
-## Installation
+## Supported Languages
+
+`lsp-cli` currently supports the following languages:
+
+| Language                    | Language Server              |
+| :-------------------------- | :--------------------------- |
+| **Python**                  | `basedpyright`               |
+| **Go**                      | `gopls`                      |
+| **Rust**                    | `rust-analyzer`              |
+| **TypeScript / JavaScript** | `typescript-language-server` |
+| **Deno**                    | `deno`                       |
+
+More supported languages coming very soon!
 
 ```bash
 uv tool install lsp-cli
@@ -32,13 +44,13 @@ Find where a symbol is defined:
 
 ```bash
 # Using line scope
-lsp definition main.py --scope 10
+lsp definition --locate main.py:10
 
 # Using text search to locate the symbol
-lsp definition main.py --find "my_function<HERE>"
+lsp definition --locate "main.py@my_function<HERE>"
 
 # Find declaration instead of definition
-lsp def models.py --scope 25 --decl
+lsp definition --locate models.py:25 --decl
 ```
 
 ### Get Symbol Information
@@ -47,10 +59,10 @@ Get detailed information about a symbol at a specific location:
 
 ```bash
 # Get symbol info at line 15
-lsp symbol main.py --scope 15
+lsp symbol --locate main.py:15
 
 # Find and get symbol info
-lsp sym utils.py --find "UserClass<HERE>"
+lsp symbol --locate "utils.py@UserClass<HERE>"
 ```
 
 ### Find References
@@ -59,16 +71,16 @@ Find all references to a symbol:
 
 ```bash
 # Find references to a symbol at line 20
-lsp reference models.py --scope 20
+lsp reference --locate models.py:20
 
 # Find references with text search
-lsp ref models.py --find "UserClass<HERE>"
+lsp reference --locate "models.py@UserClass<HERE>"
 
 # Show more context lines around each reference
-lsp reference app.py --scope 10 --context-lines 5
+lsp reference --locate app.py:10 --context-lines 5
 
 # Find implementations instead of references
-lsp reference interface.py --scope 15 --impl
+lsp reference --locate interface.py:15 --impl
 ```
 
 ### Search Workspace Symbols
@@ -107,23 +119,25 @@ Get documentation and type information for a symbol:
 
 ```bash
 # Get hover info at a specific line
-lsp hover main.py --scope 42
+lsp hover --locate main.py:42
 
 # Find symbol and get hover info
-lsp hover models.py --find "process_data<HERE>"
+lsp hover --locate "models.py@process_data<HERE>"
 ```
 
 ## Commands
 
-| Command      | Description                                             | Alias |
-| ------------ | ------------------------------------------------------- | ----- |
-| `definition` | Find symbol definition, declaration, or type definition | `def` |
-| `hover`      | Get hover information (type info, documentation)        | -     |
-| `reference`  | Find symbol references or implementations               | `ref` |
-| `outline`    | Get a structured symbol outline for a file              | -     |
-| `symbol`     | Get detailed symbol information at a specific location  | `sym` |
-| `search`     | Search for symbols across the entire workspace by name  | -     |
-| `server`     | Manage background LSP server processes                  | -     |
+| Command      | Description                                             |
+| ------------ | ------------------------------------------------------- |
+| `definition` | Find symbol definition, declaration, or type definition |
+| `hover`      | Get hover information (type info, documentation)        |
+| `reference`  | Find symbol references or implementations               |
+| `outline`    | Get a structured symbol outline for a file              |
+| `symbol`     | Get detailed symbol information at a specific location  |
+| `search`     | Search for symbols across the entire workspace by name  |
+| `rename`     | Rename a symbol across the workspace                    |
+| `server`     | Manage background LSP server processes                  |
+| `locate`     | Parse and verify a location string                      |
 
 ## Server Management
 
@@ -146,39 +160,30 @@ The manager starts automatically when you run any analysis command.
 
 ### Locating Symbols
 
-LSP CLI offers flexible ways to locate symbols in your code:
+LSP CLI uses a unified `locate` string syntax (`-L` or `--locate`) to specify positions in your code. The format is `<file_path>[:<scope>][@<find>]`.
 
-1. **Line-based**: Use `--scope` with a line number (1-based)
+1. **Line-based**: Specify a line number (1-based)
 
    ```bash
-   lsp definition main.py --scope 42
+   lsp definition --locate main.py:42
    ```
 
 2. **Range-based**: Specify a line range
 
    ```bash
-   lsp symbol utils.py --scope 10,20
+   lsp symbol --locate utils.py:10,20
    ```
 
-3. **Text-based**: Use `--find` to search for text with a marker
+3. **Text-based**: Search for text with a cursor marker `<HERE>` or `<|>`
 
    ```bash
-   lsp hover app.py --find "my_function<HERE>()"
-   # The <HERE> marker indicates the cursor position
+   lsp hover --locate "app.py@my_function<HERE>()"
    ```
 
 4. **Symbol path**: Navigate using symbol hierarchy
    ```bash
-   lsp definition models.py --scope "UserClass.get_name"
+   lsp definition --locate models.py:UserClass.get_name
    ```
-
-### Markdown Output
-
-For better readability or integration with documentation tools:
-
-```bash
-lsp hover main.py --scope 10 --markdown
-```
 
 ### Working with Results
 
@@ -197,7 +202,7 @@ lsp search "config" --max-items 50 --start-index 50
 Enable debug mode to see detailed logs:
 
 ```bash
-lsp --debug definition main.py --scope 10
+lsp --debug definition --locate main.py:10
 ```
 
 ## Configuration
@@ -205,13 +210,15 @@ lsp --debug definition main.py --scope 10
 `lsp-cli` can be configured via environment variables or a `config.toml` file.
 
 - **Config File**: `~/.config/lsp-cli/config.toml` (on Linux) or `~/Library/Application Support/lsp-cli/config.toml` (on macOS).
-- **Environment Variables**: Prefix with `LSP_` (e.g., `LSP_LOG_DIR=/tmp/logs`).
+- **Environment Variables**: Prefix with `LSP_` (e.g., `LSP_LOG_LEVEL=DEBUG`).
 
 ### Available Settings
 
 Create a `config.toml` file at the location above with the following options:
 
 ```toml
+# config.toml
+
 # Enable debug mode (verbose logging)
 debug = false
 
