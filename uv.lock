@@ -222,7 +222,7 @@ wheels = [
 [[package]]
 name = "lsap"
 version = "0.1.0"
-source = { git = "https://github.com/lsp-client/LSAP.git#e6e2e94853a92ad4e3ced8685d5474e66aac7864" }
+source = { git = "https://github.com/lsp-client/LSAP.git#fce1912426e7db3abbd3ec23c4f7bfbf23a5f219" }
 dependencies = [
     { name = "anyio" },
     { name = "asyncer" },

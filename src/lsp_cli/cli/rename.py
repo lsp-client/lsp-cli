@@ -49,10 +49,10 @@ async def rename_execute(
         str, typer.Argument(help="Rename ID from a previous preview.")
     ],
     exclude: Annotated[
-        list[Path] | None,
+        list[str] | None,
         typer.Option(
             "--exclude",
-            help="File paths to exclude from the rename operation. Can be specified multiple times.",
+            help="File paths or glob patterns to exclude from the rename operation. Can be specified multiple times.",
         ),
     ] = None,
     workspace: op.WorkspaceOpt = None,
