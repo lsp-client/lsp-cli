@@ -27,3 +27,6 @@ changelog:
         - "style"
         - "build"
         - "ci"
+    - title: "🔧 Other Changes"
+      labels:
+        - "*"
