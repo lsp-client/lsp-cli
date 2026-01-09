@@ -15,7 +15,6 @@ Each test verifies that the CLI can:
 3. Stop the server cleanly
 """
 
-import subprocess
 from pathlib import Path
 
 import pytest
