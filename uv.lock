@@ -222,7 +222,7 @@ wheels = [
 [[package]]
 name = "lsap-sdk"
 version = "0.1.0"
-source = { registry = "https://pypi.org/simple" }
+source = { registry = "https://mirrors.aliyun.com/pypi/simple" }
 dependencies = [
     { name = "anyio" },
     { name = "asyncer" },
@@ -233,14 +233,14 @@ dependencies = [
     { name = "pydantic" },
     { name = "python-liquid" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/36/93/74a264d62580a4d3db8bbb17372d346afef9f9e788d22019fddf5cfeceab/lsap_sdk-0.1.0.tar.gz", hash = "sha256:cb8b7372db46f312ca7c964589c5f687f8c120d320b8e9806943fa6961203df9", size = 24653, upload-time = "2026-01-08T15:26:38.618Z" }
+sdist = { url = "https://mirrors.aliyun.com/pypi/packages/36/93/74a264d62580a4d3db8bbb17372d346afef9f9e788d22019fddf5cfeceab/lsap_sdk-0.1.0.tar.gz", hash = "sha256:cb8b7372db46f312ca7c964589c5f687f8c120d320b8e9806943fa6961203df9" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/3b/d8/7df2efda7c55226c5c7022d7489e6b9dbd8634191b055062af88480d3017/lsap_sdk-0.1.0-py3-none-any.whl", hash = "sha256:6328314c1524e230ee443de3e1fb35e583989071d7a4de3739d3f33c1314b0da", size = 40342, upload-time = "2026-01-08T15:26:37.408Z" },
+    { url = "https://mirrors.aliyun.com/pypi/packages/3b/d8/7df2efda7c55226c5c7022d7489e6b9dbd8634191b055062af88480d3017/lsap_sdk-0.1.0-py3-none-any.whl", hash = "sha256:6328314c1524e230ee443de3e1fb35e583989071d7a4de3739d3f33c1314b0da" },
 ]
 
 [[package]]
 name = "lsp-cli"
-version = "0.1.0"
+version = "0.1.1"
 source = { editable = "." }
 dependencies = [
     { name = "anyio" },
