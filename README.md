@@ -4,6 +4,9 @@
 [![Python](https://img.shields.io/badge/Python-3.13+-blue.svg)](https://python.org)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+> **⚠️ Windows Temporary Not Supported**  
+> Due to implementation details, `lsp-cli` does not currently support Windows. Support for Windows will be added in the next version.
+
 A powerful command-line interface for the [**Language Server Agent Protocol (LSAP)**](https://github.com/lsp-client/LSAP). `lsp-cli` provides a bridge between traditional [Language Server Protocol (LSP)](https://microsoft.github.io/language-server-protocol/) servers and high-level agentic workflows, offering structured data access and a robust background server management system.
 
 Built on top of [lsp-client](https://github.com/lsp-client/lsp-client) and [LSAP](https://github.com/lsp-client/LSAP), this tool is designed for developers and AI agents who need reliable, fast, and structured access to language intelligence.
@@ -31,7 +34,7 @@ Built on top of [lsp-client](https://github.com/lsp-client/lsp-client) and [LSAP
 More supported languages coming very soon!
 
 ```bash
-uv tool install lsp-cli
+uv tool install --python 3.13 lsp-cli
 ```
 
 ## Quick Start
