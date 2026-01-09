@@ -206,29 +206,23 @@ class TestServerTestCommand(BaseLSPTest):
         assert "Language support available" in result.stdout
         assert "python" in result.stdout.lower()
 
-    def test_server_test_unsupported_language(self):
+    def test_server_test_unsupported_language(self, tmp_path):
         """Test `lsp server test` with an unsupported file type."""
         # Create a temporary file with unsupported extension
-        test_file = Path(__file__).parent / "fixtures" / "test.unknown"
-        test_file.parent.mkdir(parents=True, exist_ok=True)
+        test_file = tmp_path / "test.unknown"
         test_file.write_text("test content")
 
-        try:
-            result = self.run_lsp_command("server", "test", str(test_file))
-            assert result.returncode != 0, (
-                "Expected non-zero exit code for unsupported file"
-            )
-            assert "Error" in result.stdout
-            assert "Language not supported" in result.stdout
-            assert "Supported languages" in result.stdout
-        finally:
-            # Cleanup
-            if test_file.exists():
-                test_file.unlink()
+        result = self.run_lsp_command("server", "test", str(test_file))
+        assert result.returncode != 0, (
+            "Expected non-zero exit code for unsupported file"
+        )
+        assert "Error" in result.stdout
+        assert "Language not supported" in result.stdout
+        assert "Supported languages" in result.stdout
 
-    def test_server_test_nonexistent_path(self):
+    def test_server_test_nonexistent_path(self, tmp_path):
         """Test `lsp server test` with a non-existent path."""
-        nonexistent = Path("/nonexistent/path/file.py")
+        nonexistent = tmp_path / "nonexistent" / "path" / "file.py"
         result = self.run_lsp_command("server", "test", str(nonexistent))
         assert result.returncode != 0, (
             "Expected non-zero exit code for non-existent path"
