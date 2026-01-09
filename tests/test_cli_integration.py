@@ -192,3 +192,52 @@ class TestConnectionReliability:
         # Subsequent commands should work
         result = self.run_lsp_command("server", "list")
         assert result.returncode == 0, f"Manager not responding: {result.stderr}"
+
+
+class TestServerTestCommand:
+    """Test the `lsp server test` command."""
+
+    def run_lsp_command(self, *args, timeout=30):
+        """Run an lsp command and return the result."""
+        result = subprocess.run(
+            ["uv", "run", "lsp"] + list(args),
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            cwd=Path(__file__).parent.parent,
+        )
+        return result
+
+    def test_server_test_supported_language(self, test_project_file):
+        """Test `lsp server test` with a supported language (Python)."""
+        result = self.run_lsp_command("server", "test", str(test_project_file))
+        assert result.returncode == 0, f"Command failed: {result.stderr}"
+        assert "Success" in result.stdout
+        assert "Language support available" in result.stdout
+        assert "python" in result.stdout.lower()
+
+    def test_server_test_unsupported_language(self):
+        """Test `lsp server test` with an unsupported file type."""
+        # Create a temporary file with unsupported extension
+        test_file = Path(__file__).parent / "fixtures" / "test.unsupported"
+        test_file.parent.mkdir(parents=True, exist_ok=True)
+        test_file.write_text("test content")
+
+        try:
+            result = self.run_lsp_command("server", "test", str(test_file))
+            assert result.returncode != 0, "Expected non-zero exit code for unsupported file"
+            assert "Error" in result.stdout
+            assert "Language not supported" in result.stdout
+            assert "Supported languages" in result.stdout
+        finally:
+            # Cleanup
+            if test_file.exists():
+                test_file.unlink()
+
+    def test_server_test_nonexistent_path(self):
+        """Test `lsp server test` with a non-existent path."""
+        nonexistent = Path("/nonexistent/path/file.py")
+        result = self.run_lsp_command("server", "test", str(nonexistent))
+        assert result.returncode != 0, "Expected non-zero exit code for non-existent path"
+        assert "Error" in result.stdout
+        assert "does not exist" in result.stdout

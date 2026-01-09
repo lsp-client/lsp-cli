@@ -2,6 +2,7 @@ from pathlib import Path
 
 import typer
 
+from lsp_cli.client import find_client
 from lsp_cli.manager import (
     CreateClientRequest,
     CreateClientResponse,
@@ -79,6 +80,45 @@ def stop_server(
             "/delete", DeleteClientResponse, json=DeleteClientRequest(path=path)
         )
         print(f"Success: Stopped server for {path.absolute()}")
+
+
+@app.command("test")
+def test_server(
+    path: Path = typer.Argument(
+        ...,
+        help="Path to a code file or project directory to test language support for.",
+    ),
+):
+    """Test if the CLI supports analyzing code files in the language of the specified path."""
+    # Check if the path exists
+    if not path.exists():
+        print(f"Error: Path does not exist: {path.absolute()}")
+        raise typer.Exit(1)
+
+    # Try to find a language client for this path
+    target = find_client(path)
+
+    if target is None:
+        # No language support found
+        print(f"Error: Language not supported for path: {path.absolute()}")
+        print()
+        print("The CLI cannot analyze code files in this language.")
+        print("Supported languages: Python, Go, Rust, TypeScript, JavaScript, Deno")
+        print()
+        print("Please check:")
+        print("  - The file extension matches a supported language")
+        print("  - The project has the required language markers (e.g., go.mod, Cargo.toml)")
+        raise typer.Exit(1)
+
+    # Language is supported
+    lang_config = target.client_cls.get_language_config()
+    language_name = lang_config.kind.value
+    project_root = target.project_path
+
+    print(f"Success: Language support available")
+    print(f"  Language: {language_name}")
+    print(f"  Project root: {project_root.absolute()}")
+    print(f"  File path: {path.absolute()}")
 
 
 if __name__ == "__main__":
