@@ -18,7 +18,6 @@ Each test verifies that the CLI can:
 from pathlib import Path
 
 import pytest
-
 from conftest import BaseLSPTest
 
 
@@ -40,7 +39,9 @@ class TestLanguageSupport(BaseLSPTest):
         try:
             # Start server
             result = self.run_lsp_command("server", "start", str(python_file))
-            assert result.returncode == 0, f"Failed to start Python server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to start Python server: {result.stderr}"
+            )
 
             # List servers - should show Python server
             result = self.run_lsp_command("server", "list")
@@ -49,7 +50,9 @@ class TestLanguageSupport(BaseLSPTest):
         finally:
             # Stop server
             result = self.run_lsp_command("server", "stop", str(python_file))
-            assert result.returncode == 0, f"Failed to stop Python server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to stop Python server: {result.stderr}"
+            )
 
     def test_go_support(self, fixtures_dir):
         """Test basic LSP operations with Go project."""
@@ -78,7 +81,9 @@ class TestLanguageSupport(BaseLSPTest):
         try:
             # Start server
             result = self.run_lsp_command("server", "start", str(rust_file))
-            assert result.returncode == 0, f"Failed to start Rust server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to start Rust server: {result.stderr}"
+            )
 
             # List servers - should show Rust server
             result = self.run_lsp_command("server", "list")
@@ -87,7 +92,9 @@ class TestLanguageSupport(BaseLSPTest):
         finally:
             # Stop server
             result = self.run_lsp_command("server", "stop", str(rust_file))
-            assert result.returncode == 0, f"Failed to stop Rust server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to stop Rust server: {result.stderr}"
+            )
 
     def test_typescript_support(self, fixtures_dir):
         """Test basic LSP operations with TypeScript project."""
@@ -97,7 +104,9 @@ class TestLanguageSupport(BaseLSPTest):
         try:
             # Start server
             result = self.run_lsp_command("server", "start", str(ts_file))
-            assert result.returncode == 0, f"Failed to start TypeScript server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to start TypeScript server: {result.stderr}"
+            )
 
             # List servers - should show TypeScript server
             result = self.run_lsp_command("server", "list")
@@ -105,13 +114,15 @@ class TestLanguageSupport(BaseLSPTest):
             # Note: TypeScript may be identified as "typescript" or abbreviated form
             # We check for both to handle different language server implementations
             stdout_lower = result.stdout.lower()
-            assert (
-                "typescript" in stdout_lower or "tsserver" in stdout_lower
-            ), f"TypeScript server not listed. Output: {result.stdout}"
+            assert "typescript" in stdout_lower or "tsserver" in stdout_lower, (
+                f"TypeScript server not listed. Output: {result.stdout}"
+            )
         finally:
             # Stop server
             result = self.run_lsp_command("server", "stop", str(ts_file))
-            assert result.returncode == 0, f"Failed to stop TypeScript server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to stop TypeScript server: {result.stderr}"
+            )
 
     def test_javascript_support(self, fixtures_dir):
         """Test basic LSP operations with JavaScript project."""
@@ -121,7 +132,9 @@ class TestLanguageSupport(BaseLSPTest):
         try:
             # Start server
             result = self.run_lsp_command("server", "start", str(js_file))
-            assert result.returncode == 0, f"Failed to start JavaScript server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to start JavaScript server: {result.stderr}"
+            )
 
             # List servers - should show JavaScript server
             result = self.run_lsp_command("server", "list")
@@ -129,13 +142,15 @@ class TestLanguageSupport(BaseLSPTest):
             # Note: JavaScript may be identified as "javascript" or abbreviated form
             # We check for both to handle different language server implementations
             stdout_lower = result.stdout.lower()
-            assert (
-                "javascript" in stdout_lower or "jsserver" in stdout_lower
-            ), f"JavaScript server not listed. Output: {result.stdout}"
+            assert "javascript" in stdout_lower or "jsserver" in stdout_lower, (
+                f"JavaScript server not listed. Output: {result.stdout}"
+            )
         finally:
             # Stop server
             result = self.run_lsp_command("server", "stop", str(js_file))
-            assert result.returncode == 0, f"Failed to stop JavaScript server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to stop JavaScript server: {result.stderr}"
+            )
 
     def test_deno_support(self, fixtures_dir):
         """Test basic LSP operations with Deno project."""
@@ -145,7 +160,9 @@ class TestLanguageSupport(BaseLSPTest):
         try:
             # Start server
             result = self.run_lsp_command("server", "start", str(deno_file))
-            assert result.returncode == 0, f"Failed to start Deno server: {result.stderr}"
+            assert result.returncode == 0, (
+                f"Failed to start Deno server: {result.stderr}"
+            )
 
             # List servers - should show Deno server
             result = self.run_lsp_command("server", "list")
@@ -154,7 +171,9 @@ class TestLanguageSupport(BaseLSPTest):
         finally:
             # Always attempt to stop the server to avoid leaking processes
             stop_result = self.run_lsp_command("server", "stop", str(deno_file))
-            assert stop_result.returncode == 0, f"Failed to stop Deno server: {stop_result.stderr}"
+            assert stop_result.returncode == 0, (
+                f"Failed to stop Deno server: {stop_result.stderr}"
+            )
 
 
 class TestLanguageServerLifecycle(BaseLSPTest):
@@ -206,7 +225,9 @@ class TestLanguageServerLifecycle(BaseLSPTest):
         try:
             # Start server first time
             result1 = self.run_lsp_command("server", "start", str(python_file))
-            assert result1.returncode == 0, f"Failed to start server first time: {result1.stderr}"
+            assert result1.returncode == 0, (
+                f"Failed to start server first time: {result1.stderr}"
+            )
             server_started = True
 
             # Get server list
@@ -215,7 +236,9 @@ class TestLanguageServerLifecycle(BaseLSPTest):
 
             # Start server second time (should reuse)
             result2 = self.run_lsp_command("server", "start", str(python_file))
-            assert result2.returncode == 0, f"Failed to start server second time: {result2.stderr}"
+            assert result2.returncode == 0, (
+                f"Failed to start server second time: {result2.stderr}"
+            )
 
             # Get server list again
             list2 = self.run_lsp_command("server", "list")
