@@ -10,7 +10,6 @@ import time
 from pathlib import Path
 
 import pytest
-from conftest import BaseLSPTest
 
 
 @pytest.fixture(scope="module")
@@ -193,39 +192,3 @@ class TestConnectionReliability:
         # Subsequent commands should work
         result = self.run_lsp_command("server", "list")
         assert result.returncode == 0, f"Manager not responding: {result.stderr}"
-
-
-class TestServerTestCommand(BaseLSPTest):
-    """Test the `lsp server test` command."""
-
-    def test_server_test_supported_language(self, test_project_file):
-        """Test `lsp server test` with a supported language (Python)."""
-        result = self.run_lsp_command("server", "test", str(test_project_file))
-        assert result.returncode == 0, f"Command failed: {result.stderr}"
-        assert "Success" in result.stdout
-        assert "Language support available" in result.stdout
-        assert "python" in result.stdout.lower()
-
-    def test_server_test_unsupported_language(self, tmp_path):
-        """Test `lsp server test` with an unsupported file type."""
-        # Create a temporary file with unsupported extension
-        test_file = tmp_path / "test.unknown"
-        test_file.write_text("test content")
-
-        result = self.run_lsp_command("server", "test", str(test_file))
-        assert result.returncode != 0, (
-            "Expected non-zero exit code for unsupported file"
-        )
-        assert "Error" in result.stdout
-        assert "Language not supported" in result.stdout
-        assert "Supported languages" in result.stdout
-
-    def test_server_test_nonexistent_path(self, tmp_path):
-        """Test `lsp server test` with a non-existent path."""
-        nonexistent = tmp_path / "nonexistent" / "path" / "file.py"
-        result = self.run_lsp_command("server", "test", str(nonexistent))
-        assert result.returncode != 0, (
-            "Expected non-zero exit code for non-existent path"
-        )
-        assert "Error" in result.stdout
-        assert "does not exist" in result.stdout

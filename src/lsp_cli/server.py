@@ -58,39 +58,6 @@ def start_server(
     ),
 ):
     """Start a background LSP server for the project containing the specified path."""
-    with get_manager_client() as client:
-        resp = client.post(
-            "/create", CreateClientResponse, json=CreateClientRequest(path=path)
-        )
-        assert resp is not None
-        info = resp.info
-        print(f"Success: Started server for {path.absolute()}")
-        print(ManagedClientInfo.format(info))
-
-
-@app.command("stop")
-def stop_server(
-    path: Path = typer.Argument(
-        Path.cwd(),
-        help="Path to a code file or project directory to stop the LSP server for.",
-    ),
-):
-    """Stop the background LSP server for the project containing the specified path."""
-    with get_manager_client() as client:
-        client.delete(
-            "/delete", DeleteClientResponse, json=DeleteClientRequest(path=path)
-        )
-        print(f"Success: Stopped server for {path.absolute()}")
-
-
-@app.command("test")
-def test_server(
-    path: Path = typer.Argument(
-        ...,
-        help="Path to a code file or project directory to test language support for.",
-    ),
-):
-    """Test if the CLI supports analyzing code files in the language of the specified path."""
     # Check if the path exists
     if not path.exists():
         print(f"Error: Path does not exist: {path.absolute()}")
@@ -121,15 +88,29 @@ def test_server(
         )
         raise typer.Exit(1)
 
-    # Language is supported
-    lang_config = target.client_cls.get_language_config()
-    language_name = lang_config.kind.value
-    project_root = target.project_path
+    with get_manager_client() as client:
+        resp = client.post(
+            "/create", CreateClientResponse, json=CreateClientRequest(path=path)
+        )
+        assert resp is not None
+        info = resp.info
+        print(f"Success: Started server for {path.absolute()}")
+        print(ManagedClientInfo.format(info))
 
-    print("Success: Language support available")
-    print(f"  Language: {language_name}")
-    print(f"  Project root: {project_root.absolute()}")
-    print(f"  File path: {path.absolute()}")
+
+@app.command("stop")
+def stop_server(
+    path: Path = typer.Argument(
+        Path.cwd(),
+        help="Path to a code file or project directory to stop the LSP server for.",
+    ),
+):
+    """Stop the background LSP server for the project containing the specified path."""
+    with get_manager_client() as client:
+        client.delete(
+            "/delete", DeleteClientResponse, json=DeleteClientRequest(path=path)
+        )
+        print(f"Success: Stopped server for {path.absolute()}")
 
 
 if __name__ == "__main__":
