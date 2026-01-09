@@ -225,7 +225,9 @@ class TestServerTestCommand:
 
         try:
             result = self.run_lsp_command("server", "test", str(test_file))
-            assert result.returncode != 0, "Expected non-zero exit code for unsupported file"
+            assert result.returncode != 0, (
+                "Expected non-zero exit code for unsupported file"
+            )
             assert "Error" in result.stdout
             assert "Language not supported" in result.stdout
             assert "Supported languages" in result.stdout
@@ -238,6 +240,8 @@ class TestServerTestCommand:
         """Test `lsp server test` with a non-existent path."""
         nonexistent = Path("/nonexistent/path/file.py")
         result = self.run_lsp_command("server", "test", str(nonexistent))
-        assert result.returncode != 0, "Expected non-zero exit code for non-existent path"
+        assert result.returncode != 0, (
+            "Expected non-zero exit code for non-existent path"
+        )
         assert "Error" in result.stdout
         assert "does not exist" in result.stdout

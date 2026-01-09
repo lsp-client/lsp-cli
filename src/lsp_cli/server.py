@@ -107,7 +107,9 @@ def test_server(
         print()
         print("Please check:")
         print("  - The file extension matches a supported language")
-        print("  - The project has the required language markers (e.g., go.mod, Cargo.toml)")
+        print(
+            "  - The project has the required language markers (e.g., go.mod, Cargo.toml)"
+        )
         raise typer.Exit(1)
 
     # Language is supported
@@ -115,7 +117,7 @@ def test_server(
     language_name = lang_config.kind.value
     project_root = target.project_path
 
-    print(f"Success: Language support available")
+    print("Success: Language support available")
     print(f"  Language: {language_name}")
     print(f"  Project root: {project_root.absolute()}")
     print(f"  File path: {path.absolute()}")
