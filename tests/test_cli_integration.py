@@ -10,6 +10,7 @@ import time
 from pathlib import Path
 
 import pytest
+from conftest import BaseLSPTest
 
 
 @pytest.fixture(scope="module")
@@ -194,19 +195,8 @@ class TestConnectionReliability:
         assert result.returncode == 0, f"Manager not responding: {result.stderr}"
 
 
-class TestServerTestCommand:
+class TestServerTestCommand(BaseLSPTest):
     """Test the `lsp server test` command."""
-
-    def run_lsp_command(self, *args, timeout=30):
-        """Run an lsp command and return the result."""
-        result = subprocess.run(
-            ["uv", "run", "lsp"] + list(args),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=Path(__file__).parent.parent,
-        )
-        return result
 
     def test_server_test_supported_language(self, test_project_file):
         """Test `lsp server test` with a supported language (Python)."""
@@ -219,7 +209,7 @@ class TestServerTestCommand:
     def test_server_test_unsupported_language(self):
         """Test `lsp server test` with an unsupported file type."""
         # Create a temporary file with unsupported extension
-        test_file = Path(__file__).parent / "fixtures" / "test.unsupported"
+        test_file = Path(__file__).parent / "fixtures" / "test.unknown"
         test_file.parent.mkdir(parents=True, exist_ok=True)
         test_file.write_text("test content")
 

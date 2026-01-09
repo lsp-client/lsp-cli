@@ -1,6 +1,7 @@
 from pathlib import Path
 
 import typer
+from lsp_client.clients.lang import lang_clients
 
 from lsp_cli.client import find_client
 from lsp_cli.manager import (
@@ -99,11 +100,19 @@ def test_server(
     target = find_client(path)
 
     if target is None:
-        # No language support found
+        # No language support found - generate list of supported languages dynamically
+        supported_langs = sorted(
+            {
+                client_cls.get_language_config().kind.value
+                for client_cls in lang_clients.values()
+            }
+        )
+        supported_langs_str = ", ".join(supported_langs)
+
         print(f"Error: Language not supported for path: {path.absolute()}")
         print()
         print("The CLI cannot analyze code files in this language.")
-        print("Supported languages: Python, Go, Rust, TypeScript, JavaScript, Deno")
+        print(f"Supported languages: {supported_langs_str}")
         print()
         print("Please check:")
         print("  - The file extension matches a supported language")
