@@ -23,7 +23,7 @@ import pytest
 from conftest import BaseLSPTest
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def fixtures_dir():
     """Return the path to the test fixtures directory."""
     return Path(__file__).parent / "fixtures"
@@ -134,8 +134,9 @@ class TestLanguageSupport(BaseLSPTest):
                 "javascript" in stdout_lower or "jsserver" in stdout_lower
             ), f"JavaScript server not listed. Output: {result.stdout}"
         finally:
-            # Always attempt to stop the server to avoid interference with other tests
-            self.run_lsp_command("server", "stop", str(js_file))
+            # Stop server
+            result = self.run_lsp_command("server", "stop", str(js_file))
+            assert result.returncode == 0, f"Failed to stop JavaScript server: {result.stderr}"
 
     def test_deno_support(self, fixtures_dir):
         """Test basic LSP operations with Deno project."""
