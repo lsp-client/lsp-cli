@@ -28,8 +28,8 @@ def fixtures_dir():
     return Path(__file__).parent / "fixtures"
 
 
-class TestLanguageSupport:
-    """Test that each supported language works with LSP CLI."""
+class BaseLSPTest:
+    """Base class for LSP CLI tests with common helper methods."""
 
     def run_lsp_command(self, *args, timeout=30):
         """Run an lsp command and return the result."""
@@ -41,6 +41,10 @@ class TestLanguageSupport:
             cwd=Path(__file__).parent.parent,
         )
         return result
+
+
+class TestLanguageSupport(BaseLSPTest):
+    """Test that each supported language works with LSP CLI."""
 
     def test_python_support(self, fixtures_dir):
         """Test basic LSP operations with Python project."""
@@ -109,10 +113,12 @@ class TestLanguageSupport:
         # List servers - should show TypeScript server
         result = self.run_lsp_command("server", "list")
         assert result.returncode == 0, f"Failed to list servers: {result.stderr}"
-        # TypeScript server might be listed as "typescript" or "ts"
+        # Note: TypeScript may be identified as "typescript" or abbreviated form
+        # We check for both to handle different language server implementations
+        stdout_lower = result.stdout.lower()
         assert (
-            "typescript" in result.stdout.lower() or "ts" in result.stdout.lower()
-        ), "TypeScript server not listed"
+            "typescript" in stdout_lower or "tsserver" in stdout_lower
+        ), f"TypeScript server not listed. Output: {result.stdout}"
 
         # Stop server
         result = self.run_lsp_command("server", "stop", str(ts_file))
@@ -130,10 +136,12 @@ class TestLanguageSupport:
         # List servers - should show JavaScript server
         result = self.run_lsp_command("server", "list")
         assert result.returncode == 0, f"Failed to list servers: {result.stderr}"
-        # JavaScript server might be listed as "javascript" or "js"
+        # Note: JavaScript may be identified as "javascript" or abbreviated form
+        # We check for both to handle different language server implementations
+        stdout_lower = result.stdout.lower()
         assert (
-            "javascript" in result.stdout.lower() or "js" in result.stdout.lower()
-        ), "JavaScript server not listed"
+            "javascript" in stdout_lower or "jsserver" in stdout_lower
+        ), f"JavaScript server not listed. Output: {result.stdout}"
 
         # Stop server
         result = self.run_lsp_command("server", "stop", str(js_file))
@@ -158,19 +166,8 @@ class TestLanguageSupport:
         assert result.returncode == 0, f"Failed to stop Deno server: {result.stderr}"
 
 
-class TestLanguageServerLifecycle:
+class TestLanguageServerLifecycle(BaseLSPTest):
     """Test language server lifecycle for all supported languages."""
-
-    def run_lsp_command(self, *args, timeout=30):
-        """Run an lsp command and return the result."""
-        result = subprocess.run(
-            ["uv", "run", "lsp"] + list(args),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=Path(__file__).parent.parent,
-        )
-        return result
 
     def test_multiple_language_servers(self, fixtures_dir):
         """Test running multiple language servers simultaneously."""
@@ -238,19 +235,8 @@ class TestLanguageServerLifecycle:
         self.run_lsp_command("server", "stop", str(python_file))
 
 
-class TestLanguageServerErrors:
+class TestLanguageServerErrors(BaseLSPTest):
     """Test error handling for language servers."""
-
-    def run_lsp_command(self, *args, timeout=30):
-        """Run an lsp command and return the result."""
-        result = subprocess.run(
-            ["uv", "run", "lsp"] + list(args),
-            capture_output=True,
-            text=True,
-            timeout=timeout,
-            cwd=Path(__file__).parent.parent,
-        )
-        return result
 
     def test_invalid_file_path(self):
         """Test that invalid file paths are handled gracefully."""
