@@ -28,7 +28,7 @@ For the tests to work, the following language servers must be installed:
 - `typescript-language-server` (TypeScript/JavaScript)
 - `deno` (Deno)
 
-However, the tests are designed to be resilient and will only fail if the language server cannot be started for a project.
+However, the tests will skip or fail gracefully if the required language server is not installed or cannot be started for a project.
 
 ## Maintenance
 
